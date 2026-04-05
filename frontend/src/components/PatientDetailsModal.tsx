@@ -121,6 +121,8 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
   const maskedName = privacyMode ? (patient.name || '').replace(/([A-Z]\.\s[A-Z]).*/, '$1***') : (patient.name || 'Noma\'lum');
   const vitals = patient.vitals || { hr: 0, spo2: 0, nibpSys: 0, nibpDia: 0, rr: 0, temp: 0, nibpTime: 0 };
   const alarm = patient.alarm || { level: 'none' };
+  const hasLiveVitals =
+    patient.lastRealVitalsMs != null && patient.lastRealVitalsMs > 0;
 
   const handleExport = () => {
     const csvContent = "data:text/csv;charset=utf-8," 
@@ -267,11 +269,12 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
                     <span className="text-xs font-semibold uppercase tracking-wider">NEWS2 Bali</span>
                   </div>
                   <p className={`text-2xl font-bold ${
+                    !hasLiveVitals ? 'text-zinc-400' :
                     (patient.news2Score || 0) >= 7 ? 'text-red-600' :
                     (patient.news2Score || 0) >= 5 ? 'text-orange-500' :
                     (patient.news2Score || 0) >= 1 ? 'text-yellow-600' :
                     'text-emerald-600'
-                  }`}>{patient.news2Score || 0}</p>
+                  }`}>{hasLiveVitals ? patient.news2Score || 0 : '—'}</p>
                 </div>
                 <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200">
                   <div className="flex items-center text-zinc-500 mb-2">
@@ -286,6 +289,14 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
                   </div>
                 </div>
               </div>
+
+              {!hasLiveVitals && (
+                <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-950">
+                  <strong>Qurilma vitallari hali kelmagan.</strong> Bemor shu karavatga biriktirilgan monitor
+                  HL7 orqali serverga ulangan va MSH-3 / NAT sozlamalari mos bo‘lgach, raqamlar avtomatik
+                  yangilanadi.
+                </div>
+              )}
 
               {/* Charts */}
               <div className="bg-zinc-50 p-5 rounded-xl border border-zinc-200">

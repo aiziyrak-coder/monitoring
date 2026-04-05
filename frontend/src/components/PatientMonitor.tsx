@@ -18,6 +18,8 @@ interface PatientMonitorProps {
 
 export const PatientMonitor = React.memo(function PatientMonitor({ patient, size = 'large' }: PatientMonitorProps) {
   const { vitals, alarm, alarmLimits, scheduledCheck, deviceBattery, doctor } = patient;
+  const hasLiveVitals =
+    patient.lastRealVitalsMs != null && patient.lastRealVitalsMs > 0;
   const privacyMode = useStore(state => state.privacyMode);
   const setSchedule = useStore(state => state.setSchedule);
   const clearAlarm = useStore(state => state.clearAlarm);
@@ -134,12 +136,13 @@ export const PatientMonitor = React.memo(function PatientMonitor({ patient, size
             <div className="flex space-x-1 items-center mt-0.5">
               <div className={cn(
                 "flex items-center justify-center rounded px-1.5 py-0.5 border text-[9px] font-bold",
+                !hasLiveVitals ? "bg-zinc-100 border-zinc-200 text-zinc-500" :
                 patient.news2Score >= 7 ? "bg-red-100 border-red-200 text-red-600" :
                 patient.news2Score >= 5 ? "bg-orange-100 border-orange-200 text-orange-600" :
                 patient.news2Score >= 1 ? "bg-yellow-100 border-yellow-200 text-yellow-700" :
                 "bg-emerald-100 border-emerald-200 text-emerald-600"
-              )} title="NEWS2 Bali">
-                N: {patient.news2Score}
+              )} title={hasLiveVitals ? "NEWS2 Bali" : "Qurilma vitallari kutilmoqda"}>
+                N: {hasLiveVitals ? patient.news2Score : "—"}
               </div>
               <button
                 onClick={(e) => { e.stopPropagation(); togglePinPatient(patient.id); }}
@@ -183,6 +186,12 @@ export const PatientMonitor = React.memo(function PatientMonitor({ patient, size
         </div>
       </div>
 
+      {!isSmall && !hasLiveVitals && (
+        <p className="text-[9px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 mt-1 leading-tight">
+          Qurilma vitallari kutilmoqda (HL7 / monitor ulanishi)
+        </p>
+      )}
+
       {/* Numerics Grid */}
       <div className={cn(
         "flex-1 grid gap-0.5 min-h-0 mt-1",
@@ -197,14 +206,21 @@ export const PatientMonitor = React.memo(function PatientMonitor({ patient, size
         )}>
           <div className="flex justify-between items-start shrink-0">
             <span className={cn("text-emerald-800 font-bold truncate pr-1", isSmall ? "text-[7px]" : "text-[9px]")}>YUCh</span>
-            {!isSmall && <Heart className={cn("w-2.5 h-2.5 text-emerald-700 shrink-0", vitals.hr > 0 ? 'animate-pulse' : '')} />}
+            {!isSmall && (
+              <Heart
+                className={cn(
+                  "w-2.5 h-2.5 text-emerald-700 shrink-0",
+                  hasLiveVitals && vitals.hr > 0 ? "animate-pulse" : ""
+                )}
+              />
+            )}
           </div>
           <div className="flex items-baseline justify-end flex-1 min-h-0 items-center">
             <span className={cn(
               "font-bold text-emerald-800 font-mono tracking-tighter truncate leading-none",
               isSmall ? "text-sm" : isMedium ? "text-xl" : "text-3xl"
             )}>
-              {vitals.hr === 0 ? '---' : vitals.hr}
+              {!hasLiveVitals || vitals.hr === 0 ? '—' : vitals.hr}
             </span>
           </div>
           {!isSmall && (
@@ -230,7 +246,7 @@ export const PatientMonitor = React.memo(function PatientMonitor({ patient, size
               "font-bold text-cyan-800 font-mono tracking-tighter truncate leading-none",
               isSmall ? "text-sm" : isMedium ? "text-xl" : "text-3xl"
             )}>
-              {vitals.spo2 === 0 ? '---' : vitals.spo2}
+              {!hasLiveVitals || vitals.spo2 === 0 ? '—' : vitals.spo2}
             </span>
           </div>
           {!isSmall && (
@@ -257,19 +273,23 @@ export const PatientMonitor = React.memo(function PatientMonitor({ patient, size
                 "font-bold text-zinc-950 font-mono tracking-tighter truncate leading-none",
                 isSmall ? "text-xs" : isMedium ? "text-lg" : "text-xl"
               )}>
-                {vitals.nibpSys === 0 ? '---' : vitals.nibpSys}
+                {!hasLiveVitals || vitals.nibpSys === 0 ? '—' : vitals.nibpSys}
               </span>
               <span className="text-zinc-600 mx-0.5 shrink-0 text-xs">/</span>
               <span className={cn(
                 "font-bold text-zinc-950 font-mono tracking-tighter truncate leading-none",
                 isSmall ? "text-xs" : isMedium ? "text-lg" : "text-xl"
               )}>
-                {vitals.nibpDia === 0 ? '---' : vitals.nibpDia}
+                {!hasLiveVitals || vitals.nibpDia === 0 ? '—' : vitals.nibpDia}
               </span>
             </div>
             {!isSmall && (
               <span className="text-[8px] text-zinc-600 mt-0.5 truncate max-w-full shrink-0">
-                {vitals.nibpTime ? formatDistanceToNow(vitals.nibpTime, { addSuffix: true, locale: uz }) : "O'lchanmagan"}
+                {!hasLiveVitals
+                  ? "O'lchanmagan"
+                  : vitals.nibpTime
+                    ? formatDistanceToNow(vitals.nibpTime, { addSuffix: true, locale: uz })
+                    : "O'lchanmagan"}
               </span>
             )}
           </div>
@@ -282,7 +302,7 @@ export const PatientMonitor = React.memo(function PatientMonitor({ patient, size
               <span className="text-yellow-800 font-bold text-[9px] shrink-0 truncate">NCh</span>
               <div className="flex items-baseline justify-end flex-1 min-h-0 items-center">
                 <span className="text-lg font-bold text-yellow-800 font-mono tracking-tighter truncate leading-none">
-                  {vitals.rr === 0 ? '---' : vitals.rr}
+                  {!hasLiveVitals || vitals.rr === 0 ? '—' : vitals.rr}
                 </span>
               </div>
             </div>
@@ -290,7 +310,9 @@ export const PatientMonitor = React.memo(function PatientMonitor({ patient, size
               <span className="text-orange-800 font-bold text-[9px] shrink-0 truncate">Harorat</span>
               <div className="flex items-baseline justify-end flex-1 min-h-0 items-center">
                 <span className="text-lg font-bold text-orange-800 font-mono tracking-tighter truncate leading-none">
-                  {Number.isFinite(vitals.temp) ? vitals.temp.toFixed(1) : '---'}
+                  {!hasLiveVitals || !Number.isFinite(vitals.temp) || vitals.temp === 0
+                    ? '—'
+                    : vitals.temp.toFixed(1)}
                 </span>
               </div>
             </div>

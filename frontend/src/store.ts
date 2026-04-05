@@ -79,6 +79,7 @@ export interface PatientData {
   history: VitalHistory[];
   news2Score: number;
   isPinned: boolean;
+  lastRealVitalsMs?: number | null;
   medications: Medication[];
   labs: LabResult[];
   notes: ClinicalNote[];
@@ -94,6 +95,7 @@ export interface VitalsUpdatePayload {
   deviceBattery: number;
   news2Score: number;
   isPinned: boolean;
+  lastRealVitalsMs?: number | null;
   medications: Medication[];
   labs: LabResult[];
   notes: ClinicalNote[];
@@ -224,6 +226,10 @@ export const useStore = create<AppState>((set, get) => ({
               history: update.history ?? p.history,
               news2Score: update.news2Score ?? p.news2Score,
               isPinned: update.isPinned ?? p.isPinned,
+              lastRealVitalsMs:
+                update.lastRealVitalsMs !== undefined
+                  ? update.lastRealVitalsMs
+                  : p.lastRealVitalsMs,
               medications: update.medications ?? p.medications,
               labs: update.labs ?? p.labs,
               notes: update.notes ?? p.notes

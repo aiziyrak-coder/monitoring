@@ -127,6 +127,7 @@ def patient_to_wire_dict(
         "assignedNurse": p.assigned_nurse,
         "deviceBattery": float(p.device_battery),
         "admissionDate": admission_ms,
+        "lastRealVitalsMs": p.last_real_vitals_ms,
         "vitals": vitals,
         "alarm": alarm,
         "alarmLimits": limits,

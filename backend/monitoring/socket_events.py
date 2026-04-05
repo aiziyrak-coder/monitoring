@@ -146,13 +146,14 @@ def register_socket_handlers(sio) -> None:
                     assigned_nurse=data.get("assignedNurse") or "",
                     device_battery=100.0,
                     admission_date=timezone.now(),
-                    hr=75,
-                    spo2=98,
-                    nibp_sys=120,
-                    nibp_dia=80,
-                    rr=16,
-                    temp=36.6,
-                    nibp_time_ms=now_ms,
+                    hr=0,
+                    spo2=0,
+                    nibp_sys=0,
+                    nibp_dia=0,
+                    rr=0,
+                    temp=0.0,
+                    nibp_time_ms=None,
+                    last_real_vitals_ms=None,
                     alarm_level=Patient.ALARM_NONE,
                     alarm_message="",
                     alarm_limits={**DEFAULT_ALARM_LIMITS},
@@ -165,8 +166,11 @@ def register_socket_handlers(sio) -> None:
                     bed=bed_obj,
                 )
                 p.save()
-                v = vitals_from_patient_row(p)
-                p.news2_score = calculate_news2(v)
+                if p.last_real_vitals_ms is None:
+                    p.news2_score = 0
+                else:
+                    v = vitals_from_patient_row(p)
+                    p.news2_score = calculate_news2(v)
                 p.save(update_fields=["news2_score"])
             return patient_to_wire_dict(p)
 

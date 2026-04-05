@@ -341,6 +341,7 @@ class Command(BaseCommand):
                 rr=rr,
                 temp=temp,
                 nibp_time_ms=now_ms - random.randint(300000, 1800000),
+                last_real_vitals_ms=now_ms,
                 alarm_level=alvl,
                 alarm_message=amsg,
                 alarm_limits={**DEFAULT_ALARM_LIMITS},

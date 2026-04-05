@@ -20,7 +20,7 @@ log = logging.getLogger(__name__)
 
 
 def build_vitals_socket_payload(wire: dict) -> dict[str, Any]:
-    return {
+    out = {
         "id": wire["id"],
         "vitals": wire["vitals"],
         "alarm": wire["alarm"],
@@ -33,6 +33,9 @@ def build_vitals_socket_payload(wire: dict) -> dict[str, Any]:
         "labs": wire["labs"],
         "notes": wire["notes"],
     }
+    if "lastRealVitalsMs" in wire:
+        out["lastRealVitalsMs"] = wire["lastRealVitalsMs"]
+    return out
 
 
 def apply_device_vitals_dict(dev: Device, body: dict) -> dict[str, Any] | None:
@@ -57,6 +60,7 @@ def apply_device_vitals_dict(dev: Device, body: dict) -> dict[str, Any] | None:
         )
         return None
 
+    wrote_vital = False
     for src, dst in (
         ("hr", "hr"),
         ("spo2", "spo2"),
@@ -71,11 +75,17 @@ def apply_device_vitals_dict(dev: Device, body: dict) -> dict[str, Any] | None:
                 setattr(p, dst, float(val))
             else:
                 setattr(p, dst, int(val))
+            wrote_vital = True
 
     if "nibpTime" in body and body["nibpTime"] is not None:
         p.nibp_time_ms = int(body["nibpTime"])
+        wrote_vital = True
     elif ("nibpSys" in body or "nibpDia" in body) and body.get("nibpSys") is not None:
         p.nibp_time_ms = now_ms
+        wrote_vital = True
+
+    if wrote_vital:
+        p.last_real_vitals_ms = now_ms
 
     limits = p.alarm_limits or {**DEFAULT_ALARM_LIMITS}
     if not p.alarm_limits:

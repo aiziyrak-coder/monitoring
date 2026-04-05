@@ -51,6 +51,9 @@ def run_simulation_tick() -> None:
             p = Patient.objects.select_for_update().get(pk=pid)
             if p.bed_id and p.bed_id in beds_with_device:
                 continue
+            # Qurilmadan haqiqiy vital kelmaguncha simulyatsiya yozmaymiz
+            if p.last_real_vitals_ms is None:
+                continue
             limits = p.alarm_limits or DEFAULT_ALARM_LIMITS
             if not p.alarm_limits:
                 p.alarm_limits = {**DEFAULT_ALARM_LIMITS}

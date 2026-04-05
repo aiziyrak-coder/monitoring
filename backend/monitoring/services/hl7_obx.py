@@ -8,9 +8,11 @@ _CODE_TO_FIELD: dict[str, str] = {
     "8867-4": "hr",
     "14784217-9": "hr",
     "8884-9": "hr",
+    "131328-4": "hr",
     "2708-6": "spo2",
     "2710-2": "spo2",
     "59408-5": "spo2",
+    "20564-1": "spo2",
     "8310-5": "temp",
     "9279-1": "rr",
     "8480-6": "nibpSys",
@@ -37,13 +39,16 @@ def _name_hint(name_upper: str) -> str | None:
         return "hr"
     if "PULSE" in name_upper or name_upper.startswith("PR"):
         return "hr"
-    if "SPO2" in name_upper or "OXYGEN" in name_upper:
+    # Mindray / rus interfeysi
+    if "ЧСС" in name_upper or "ПУЛЬС" in name_upper:
+        return "hr"
+    if "SPO2" in name_upper or "OXYGEN" in name_upper or "САТУР" in name_upper:
         return "spo2"
-    if "RESP" in name_upper:
+    if "RESP" in name_upper or "ЧДД" in name_upper or "ДЫХАН" in name_upper:
         return "rr"
-    if "TEMP" in name_upper:
+    if "TEMP" in name_upper or "ТЕМПЕР" in name_upper or "HARORAT" in name_upper:
         return "temp"
-    if "NIBP" in name_upper or "BLOOD PRESS" in name_upper:
+    if "NIBP" in name_upper or "BLOOD PRESS" in name_upper or "АД" in name_upper or "ДАВЛЕН" in name_upper:
         return "nibp_combined"
     return None
 
@@ -52,6 +57,7 @@ def _parse_num(value_str: str) -> float | None:
     s = value_str.strip().split("^")[0].strip()
     if not s or s in (".", "-"):
         return None
+    s = re.sub(r"^[<>≤≥]\s*", "", s)
     m = re.match(r"^-?\d+(?:[.,]\d+)?", s.replace(",", "."))
     if not m:
         return None
@@ -81,7 +87,7 @@ def obx_to_vitals_dict(hl7_text: str) -> dict[str, Any]:
         key_raw = parts[3] or ""
         code = key_raw.split("^")[0].strip() if key_raw else ""
         name_u = (key_raw.split("^")[1] if "^" in key_raw else "").upper()
-        value_str = parts[5]
+        value_str = parts[5] if len(parts) > 5 else ""
 
         sys_dia = _try_split_nibp(value_str)
         if sys_dia[0] is not None or sys_dia[1] is not None:
@@ -95,7 +101,14 @@ def obx_to_vitals_dict(hl7_text: str) -> dict[str, Any]:
         if num is None:
             continue
 
-        field = _CODE_TO_FIELD.get(code) or _name_hint(name_u)
+        field = _CODE_TO_FIELD.get(code)
+        if not field and key_raw:
+            for loinc, fld in _CODE_TO_FIELD.items():
+                if loinc and loinc in key_raw:
+                    field = fld
+                    break
+        if not field:
+            field = _name_hint(name_u)
         if field == "nibp_combined":
             continue
         if not field:

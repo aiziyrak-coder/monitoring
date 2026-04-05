@@ -108,6 +108,8 @@ class Patient(models.Model):
     rr = models.PositiveIntegerField(default=16)
     temp = models.FloatField(default=36.6)
     nibp_time_ms = models.BigIntegerField(null=True, blank=True)
+    # Qurilma (HL7/REST) dan oxirgi muvaffaqiyatli vital vaqti — None bo'lsa UI «kutilmoqda»
+    last_real_vitals_ms = models.BigIntegerField(null=True, blank=True)
 
     alarm_level = models.CharField(
         max_length=16, choices=ALARM_LEVELS, default=ALARM_NONE
