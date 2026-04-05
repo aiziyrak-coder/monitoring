@@ -191,8 +191,13 @@ export const useStore = create<AppState>((set, get) => ({
     
     const socket = io(socketIoUrl(), {
       path: '/socket.io',
-      // Avval polling, keyin WebSocket (server AsyncServer bilan mos)
-      transports: ['polling', 'websocket'],
+      // Faqat polling: WebSocket ko'p proxy/Cloudflare da "transport close" beradi
+      transports: ['polling'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 8000,
+      timeout: 25000,
     });
     
     socket.on('initial_state', (data: PatientData[]) => {
@@ -251,10 +256,12 @@ export const useStore = create<AppState>((set, get) => ({
     });
 
     socket.on('disconnect', (reason) => {
-      console.warn('Socket disconnected:', reason);
       if (reason === 'io server disconnect') {
-        // the disconnection was initiated by the server, you need to reconnect manually
         socket.connect();
+      }
+      // transport close / ping timeout — client o'zi qayta ulanadi; konsolni ifloslamaslik
+      else if (reason !== 'transport close' && reason !== 'ping timeout') {
+        console.warn('Socket disconnected:', reason);
       }
     });
 
