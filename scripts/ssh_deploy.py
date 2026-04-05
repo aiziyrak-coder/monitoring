@@ -81,7 +81,7 @@ REMOTE_SCRIPT = textwrap.dedent(
     sleep 2
     systemctl is-active clinicmonitoring-backend || true
     systemctl is-active nginx || true
-    curl -sS -o /dev/null -w "loopback api health HTTP %{http_code}\n" http://127.0.0.1:8000/api/health || true
+    curl -sS -o /dev/null -w "loopback api health HTTP %{http_code}\n" http://127.0.0.1:8010/api/health || true
     """
 ).strip()
 

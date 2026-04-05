@@ -45,7 +45,7 @@ sys.exit(0 if Patient.objects.exists() else 1)
   .venv/bin/python manage.py seed_demo
 fi
 
-# Eski API (boshqa dastur) — port 8000 va nginx yo'nalishi uchun
+# Eski API nomi bilan konteyner/servis (klinika 8010 da)
 systemctl stop clinic-monitoring-api 2>/dev/null || true
 systemctl disable clinic-monitoring-api 2>/dev/null || true
 if command -v docker >/dev/null 2>&1; then
