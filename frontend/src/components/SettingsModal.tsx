@@ -462,7 +462,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                           >
                             /version.txt
                           </a>
-                          {' '}oching: ichida <code className="bg-white px-1 rounded">dept-room-bed-v2-footer</code> bo&apos;lishi kerak. Yo&apos;q bo&apos;lsa — deploy yoki noto&apos;g&apos;ri domen (
+                          {' '}oching: ichida <code className="bg-white px-1 rounded">deploy-verify-v1</code> bo&apos;lishi kerak. Yo&apos;q bo&apos;lsa — deploy yoki noto&apos;g&apos;ri domen (
                           <code className="bg-white px-1 rounded">clinicmonitoring.ziyrak.org</code>
                           ).
                         </p>

@@ -93,8 +93,13 @@ if ! grep -q 'name="app-id"' "$WEBROOT/index.html" 2>/dev/null; then
     echo "XATO: index.html da meta app-id yo'q — build tekshiring." >&2
     exit 1
 fi
+if [[ ! -f "$WEBROOT/version.txt" ]]; then
+    echo "XATO: $WEBROOT/version.txt yo'q — Vite build public/ ni tekshiring." >&2
+    exit 1
+fi
 echo "Frontend docroot: $WEBROOT"
 grep 'name="app-id"' "$WEBROOT/index.html" || true
+echo "version.txt:" "$(tr -d '\r\n' < "$WEBROOT/version.txt")"
 
 # Nginx: boshqa dasturlarning shu domenlar uchun vhostlarini olib tashlash
 bash "$APP_DIR/deploy/purge-nginx-clinicmonitoring-conflicts.sh"

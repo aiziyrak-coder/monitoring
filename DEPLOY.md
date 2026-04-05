@@ -66,5 +66,15 @@ git push -u origin main
 
 - https://clinicmonitoringapi.ziyrak.org/api/health  
 - https://clinicmonitoring.ziyrak.org  
+- https://clinicmonitoring.ziyrak.org/version.txt — bitta qator (`deploy-verify-v1` yoki `buildInfo` dagi yangi yorliq); agar HTML (bosh sahifa) chiqsa, yangi `dist` joylanmagan yoki noto‘g‘ri `root`.
 
 Repository: [github.com/aiziyrak-coder/Monitoring](https://github.com/aiziyrak-coder/Monitoring)
+
+## 8. Yangilanmayaptimi? (Actions + qo‘lda deploy)
+
+1. GitHub → **Actions** → **CI and deploy** — oxirgi run **yashil**mi? Qizil bo‘lsa, **Secrets** (`DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`) va logni tekshiring.
+2. **Qo‘lda deploy** (SSH kalit bilan serverga):
+   ```bash
+   ssh root@167.71.53.238 'cd /opt/clinicmonitoring && bash deploy/server-pull.sh && bash deploy/remote-update.sh'
+   ```
+3. **Actions dan qo‘lda ishga tushirish:** **Actions** → **CI and deploy** → **Run workflow** (branch: `main`). Bu ham `workflow_dispatch` orqali serverni yangilaydi (Secrets bo‘lishi shart).
