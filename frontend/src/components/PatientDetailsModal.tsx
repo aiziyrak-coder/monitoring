@@ -1,6 +1,6 @@
 import React, { useState, useMemo, ErrorInfo, ReactNode } from 'react';
 import { useStore, AlarmLimits } from '../store';
-import { X, Download, Activity, Heart, Battery, UserCircle, Calendar, Stethoscope, UserMinus, Settings2, LineChart as ChartIcon, Save, AlertTriangle, Pill, FlaskConical, FileText, Plus } from 'lucide-react';
+import { X, Download, Activity, Heart, Battery, UserCircle, Calendar, Stethoscope, UserMinus, Settings2, LineChart as ChartIcon, Save, AlertTriangle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 
@@ -86,20 +86,15 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
   const updateLimits = useStore(state => state.updateLimits);
   const patients = useStore(state => state.patients);
   const privacyMode = useStore(state => state.privacyMode);
-  const addClinicalNote = useStore(state => state.addClinicalNote);
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'limits' | 'medications' | 'labs' | 'notes'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'limits'>('overview');
   const [localLimits, setLocalLimits] = useState<AlarmLimits | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [newNote, setNewNote] = useState('');
-  const [noteAuthor, setNoteAuthor] = useState('');
 
   const patient = patients[patientId];
 
   React.useEffect(() => {
     setLocalLimits(null);
-    setNewNote('');
-    setNoteAuthor('');
   }, [patientId]);
 
   React.useEffect(() => {
@@ -170,16 +165,6 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
         [bound]: num
       }
     });
-  };
-
-  const handleAddNote = () => {
-    if (newNote.trim()) {
-      addClinicalNote(patient.id, {
-        text: newNote,
-        author: noteAuthor.trim(),
-      });
-      setNewNote('');
-    }
   };
 
   return (
@@ -253,27 +238,6 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
           >
             <Settings2 className="w-4 h-4 mr-2" />
             Signal Chegaralari
-          </button>
-          <button 
-            onClick={() => setActiveTab('medications')}
-            className={`px-6 py-3 text-sm font-medium flex items-center whitespace-nowrap transition-colors ${activeTab === 'medications' ? 'text-emerald-600 border-b-2 border-emerald-500 bg-emerald-50' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50'}`}
-          >
-            <Pill className="w-4 h-4 mr-2" />
-            Dori-darmonlar
-          </button>
-          <button 
-            onClick={() => setActiveTab('labs')}
-            className={`px-6 py-3 text-sm font-medium flex items-center whitespace-nowrap transition-colors ${activeTab === 'labs' ? 'text-emerald-600 border-b-2 border-emerald-500 bg-emerald-50' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50'}`}
-          >
-            <FlaskConical className="w-4 h-4 mr-2" />
-            Laboratoriya
-          </button>
-          <button 
-            onClick={() => setActiveTab('notes')}
-            className={`px-6 py-3 text-sm font-medium flex items-center whitespace-nowrap transition-colors ${activeTab === 'notes' ? 'text-emerald-600 border-b-2 border-emerald-500 bg-emerald-50' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50'}`}
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Qaydlar
           </button>
         </div>
 
@@ -485,118 +449,6 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
                   </div>
                 </div>
               )}
-            </div>
-          ) : activeTab === 'medications' ? (
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold text-zinc-900 flex items-center">
-                <Pill className="w-5 h-5 mr-2 text-emerald-600" />
-                Dori-darmonlar
-              </h3>
-              {patient.medications && patient.medications.length > 0 ? (
-                <div className="bg-zinc-50 border border-zinc-200 rounded-xl overflow-hidden">
-                  <table className="w-full text-left text-sm text-zinc-600">
-                    <thead className="bg-zinc-100 text-xs uppercase text-zinc-500">
-                      <tr>
-                        <th className="px-4 py-3">Nomi</th>
-                        <th className="px-4 py-3">Dozasi</th>
-                        <th className="px-4 py-3">Tezligi</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-200">
-                      {patient.medications.map(med => (
-                        <tr key={med.id} className="hover:bg-zinc-50">
-                          <td className="px-4 py-3 font-medium text-zinc-900">{med.name}</td>
-                          <td className="px-4 py-3">{med.dose}</td>
-                          <td className="px-4 py-3">{med.rate}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-zinc-500 italic">Dori-darmonlar belgilanmagan.</p>
-              )}
-            </div>
-          ) : activeTab === 'labs' ? (
-            <div className="space-y-4">
-              <h3 className="text-lg font-bold text-zinc-900 flex items-center">
-                <FlaskConical className="w-5 h-5 mr-2 text-emerald-600" />
-                Laboratoriya Natijalari
-              </h3>
-              {patient.labs && patient.labs.length > 0 ? (
-                <div className="bg-zinc-50 border border-zinc-200 rounded-xl overflow-hidden">
-                  <table className="w-full text-left text-sm text-zinc-600">
-                    <thead className="bg-zinc-100 text-xs uppercase text-zinc-500">
-                      <tr>
-                        <th className="px-4 py-3">Tahlil</th>
-                        <th className="px-4 py-3">Natija</th>
-                        <th className="px-4 py-3">Vaqt</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-200">
-                      {patient.labs.map(lab => (
-                        <tr key={lab.id} className="hover:bg-zinc-50">
-                          <td className="px-4 py-3 font-medium text-zinc-900">{lab.name}</td>
-                          <td className={`px-4 py-3 font-bold ${lab.isAbnormal ? 'text-red-600' : 'text-emerald-600'}`}>
-                            {lab.value} {lab.unit}
-                          </td>
-                          <td className="px-4 py-3">{lab.time ? format(new Date(lab.time), 'dd.MM HH:mm') : ''}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="text-zinc-500 italic">Laboratoriya natijalari yo'q.</p>
-              )}
-            </div>
-          ) : activeTab === 'notes' ? (
-            <div className="space-y-6">
-              <h3 className="text-lg font-bold text-zinc-900 flex items-center">
-                <FileText className="w-5 h-5 mr-2 text-emerald-600" />
-                Klinik Qaydlar
-              </h3>
-              
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:space-x-2">
-                <input
-                  type="text"
-                  value={noteAuthor}
-                  onChange={(e) => setNoteAuthor(e.target.value)}
-                  placeholder="Muallif (F.I.Sh.)"
-                  className="sm:w-44 bg-white border border-zinc-200 rounded-lg px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:border-emerald-500"
-                />
-                <input 
-                  type="text" 
-                  value={newNote}
-                  onChange={(e) => setNewNote(e.target.value)}
-                  placeholder="Yangi qayd matni..."
-                  className="flex-1 bg-white border border-zinc-200 rounded-lg px-4 py-2 text-zinc-900 focus:outline-none focus:border-emerald-500"
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddNote()}
-                />
-                <button 
-                  onClick={handleAddNote}
-                  disabled={!newNote.trim()}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center"
-                >
-                  <Plus className="w-4 h-4 mr-1" /> Qo'shish
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                {patient.notes && patient.notes.length > 0 ? (
-                  [...patient.notes].reverse().map(note => (
-                    <div key={note.id} className="bg-zinc-50 border border-zinc-200 p-4 rounded-xl">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-medium text-zinc-800">{note.author?.trim() ? note.author : '—'}</span>
-                        <span className="text-xs text-zinc-500">{note.time ? format(new Date(note.time), 'dd.MM.yyyy HH:mm') : ''}</span>
-                      </div>
-                      <p className="text-zinc-600 text-sm">{note.text}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-zinc-500 italic">Qaydlar mavjud emas.</p>
-                )}
-              </div>
             </div>
           ) : null}
 
