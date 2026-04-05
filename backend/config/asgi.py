@@ -1,8 +1,9 @@
 """
 Django ASGI + Socket.IO (WebSocket nginx orqali ishlaydi).
 
-Waitress WSGI WebSocket qo‘llab-quvvatlamaydi — production: uvicorn (run_dev.py).
+Production: uvicorn (run_dev.py). Simulyatsiya threadi emit uchun loop saqlanadi.
 """
+import asyncio
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
@@ -15,6 +16,7 @@ from django.core.asgi import get_asgi_application
 
 import socketio
 
+from monitoring.asgi_support import set_event_loop
 from monitoring.io_bus import sio
 from monitoring.socket_events import register_socket_handlers
 
@@ -22,4 +24,13 @@ register_socket_handlers(sio)
 
 django_asgi_app = get_asgi_application()
 
-application = socketio.ASGIApp(sio, django_asgi_app)
+
+async def _on_startup():
+    set_event_loop(asyncio.get_running_loop())
+
+
+application = socketio.ASGIApp(
+    sio,
+    django_asgi_app,
+    on_startup=_on_startup,
+)

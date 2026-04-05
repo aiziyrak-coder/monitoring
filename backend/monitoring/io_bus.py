@@ -1,4 +1,4 @@
-"""Socket.IO server instance — Django yuklanishidan oldin import qilinadi."""
+"""Socket.IO server — ASGI (uvicorn) uchun AsyncServer."""
 import socketio
 
-sio = socketio.Server(cors_allowed_origins="*", async_mode="threading")
+sio = socketio.AsyncServer(cors_allowed_origins="*", async_mode="asgi")

@@ -198,7 +198,8 @@ export const useStore = create<AppState>((set, get) => ({
     
     const socket = io(socketIoUrl(), {
       path: '/socket.io',
-      transports: ['websocket', 'polling'],
+      // Avval polling, keyin WebSocket (server AsyncServer bilan mos)
+      transports: ['polling', 'websocket'],
     });
     
     socket.on('initial_state', (data: PatientData[]) => {

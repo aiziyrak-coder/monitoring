@@ -7,6 +7,7 @@ from typing import Any
 
 from django.db import close_old_connections, transaction
 
+from monitoring.asgi_support import schedule_coro
 from monitoring.io_bus import sio
 from monitoring.models import Patient, VitalHistory
 from monitoring.services.news2 import (
@@ -177,4 +178,4 @@ def run_simulation_tick() -> None:
                 wire = patient_to_wire_dict(p, omit_history=True)
                 updates.append(_build_update_payload(wire, with_history=False))
 
-    sio.emit("vitals_update", updates)
+    schedule_coro(sio.emit("vitals_update", updates))

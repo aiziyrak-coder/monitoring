@@ -11,7 +11,7 @@ python-engineio>=4.9
 # ASGI server (Socket.IO WebSocket; Windows/Linux)
 uvicorn[standard]>=0.32
 
-# WSGI (faqat config.wsgi_socket — legacy / maxsus test)
+# WSGI (faqat Django default wsgi — Socket.IO ASGI orqali)
 waitress>=3.0
 
 # Production DB (ixtiyoriy; standart SQLite)
