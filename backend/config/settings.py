@@ -118,6 +118,9 @@ HL7_LISTENER_ENABLED = os.environ.get("HL7_LISTENER_ENABLED", "1").lower() in (
 HL7_LISTEN_HOST = os.environ.get("HL7_LISTEN_HOST", "0.0.0.0")
 HL7_LISTEN_PORT = int(os.environ.get("HL7_LISTEN_PORT", "6006"))
 
+# Shu vaqtdan oshsa qurilma API bo‘yicha «oflayn» (vitallar kelmayapti)
+DEVICE_ONLINE_SILENCE_SEC = int(os.environ.get("DEVICE_ONLINE_SILENCE_SEC", "120"))
+
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",

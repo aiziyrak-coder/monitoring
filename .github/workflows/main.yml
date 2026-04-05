@@ -55,6 +55,6 @@ jobs:
             fi
             cd "$APP"
             git remote set-url origin https://github.com/aiziyrak-coder/Monitoring.git
-            chmod +x deploy/server-pull.sh deploy/remote-update.sh deploy/purge-nginx-clinicmonitoring-conflicts.sh || true
+            chmod +x deploy/server-pull.sh deploy/remote-update.sh deploy/purge-nginx-clinicmonitoring-conflicts.sh deploy/open-hl7-port.sh || true
             bash deploy/server-pull.sh
             bash deploy/remote-update.sh

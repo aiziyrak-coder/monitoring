@@ -66,7 +66,8 @@ git push -u origin main
 
 - https://clinicmonitoringapi.ziyrak.org/api/health  
 - https://clinicmonitoring.ziyrak.org  
-- https://clinicmonitoring.ziyrak.org/version.txt — bitta qator (`bed-path-table-v1` yoki `buildInfo` dagi yangi yorliq); agar HTML (bosh sahifa) chiqsa, yangi `dist` joylanmagan yoki noto‘g‘ri `root`.
+- https://clinicmonitoring.ziyrak.org/version.txt — bitta qator (`platform-device-link-v1` yoki `buildInfo` dagi yangi yorliq); agar HTML (bosh sahifa) chiqsa, yangi `dist` joylanmagan yoki noto‘g‘ri `root`.
+- HL7 uchun **6006/tcp** (VPS firewall + kerak bo‘lsa `bash deploy/open-hl7-port.sh`). Qurilma «oflayn» bo‘lsa — `GET /api/health` (`hl7`, `deviceOfflineAfterSec`) va server loglarini tekshiring.
 
 Repository: [github.com/aiziyrak-coder/Monitoring](https://github.com/aiziyrak-coder/Monitoring)
 

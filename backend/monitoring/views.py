@@ -1,5 +1,7 @@
+import ipaddress
 import time
 
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.response import Response
@@ -9,6 +11,7 @@ from monitoring.asgi_support import schedule_coro
 from monitoring.io_bus import sio
 from monitoring.models import Bed, Department, Device, Patient, Room
 from monitoring.services.device_ingest import apply_device_vitals_dict
+from monitoring.services.device_stale import mark_stale_devices_offline
 from monitoring.serializers import (
     BedCreateSerializer,
     BedSerializer,
@@ -23,6 +26,27 @@ from monitoring.serializers import (
 from monitoring.services.patient_payload import all_patients_wire
 
 
+def _parse_nat_ip(raw) -> str | None:
+    if raw is None:
+        return None
+    s = str(raw).strip()
+    if not s:
+        return None
+    try:
+        ipaddress.ip_address(s)
+    except ValueError:
+        raise ValueError("NAT tashqi IP noto'g'ri")
+    return s
+
+
+def _ingest_vitals_response(dev: Device, request) -> Response:
+    body = request.data if isinstance(request.data, dict) else {}
+    payload = apply_device_vitals_dict(dev, body)
+    if payload:
+        schedule_coro(sio.emit("vitals_update", [payload]))
+    return Response({"success": True, "message": "Data received"})
+
+
 class HealthView(APIView):
     def get(self, request):
         return Response(
@@ -30,6 +54,12 @@ class HealthView(APIView):
                 "status": "ok",
                 "uptime": time.monotonic(),
                 "service": "clinic-monitoring-django",
+                "hl7": {
+                    "enabled": bool(settings.HL7_LISTENER_ENABLED),
+                    "listenHost": settings.HL7_LISTEN_HOST,
+                    "listenPort": settings.HL7_LISTEN_PORT,
+                },
+                "deviceOfflineAfterSec": settings.DEVICE_ONLINE_SILENCE_SEC,
             }
         )
 
@@ -41,6 +71,7 @@ class PatientsListView(APIView):
 
 class InfrastructureView(APIView):
     def get(self, request):
+        mark_stale_devices_offline()
         return Response(
             {
                 "departments": DepartmentSerializer(
@@ -104,18 +135,32 @@ class DeviceListCreateView(APIView):
     def post(self, request):
         ser = DeviceCreateSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
+        vd = ser.validated_data
+        hl7 = (vd.get("hl7SendingApplication") or "").strip()
+        if hl7 and Device.objects.filter(hl7_sending_application=hl7).exists():
+            return Response(
+                {"detail": "Bu HL7 ID (MSH-3) boshqa qurilmada band"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            nat = _parse_nat_ip(vd.get("hl7NatSourceIp"))
+        except ValueError as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         bed = None
-        bid = ser.validated_data.get("bedId")
+        bid = vd.get("bedId")
         if bid:
             bed = get_object_or_404(Bed, pk=bid)
         dev = Device(
-            ip_address=ser.validated_data["ipAddress"],
-            mac_address=ser.validated_data["macAddress"],
-            model=ser.validated_data["model"],
+            ip_address=vd["ipAddress"],
+            mac_address=vd["macAddress"],
+            model=vd["model"],
             bed=bed,
             status="offline",
-            hl7_sending_application=ser.validated_data.get("hl7SendingApplication")
-            or "",
+            hl7_sending_application=hl7,
+            hl7_nat_source_ip=nat,
         )
         dev.save()
         return Response(DeviceSerializer(dev).data, status=status.HTTP_201_CREATED)
@@ -139,7 +184,25 @@ class DeviceDetailView(APIView):
         if "macAddress" in data:
             dev.mac_address = data["macAddress"]
         if "hl7SendingApplication" in data:
-            dev.hl7_sending_application = data["hl7SendingApplication"] or ""
+            hl7 = (data["hl7SendingApplication"] or "").strip()
+            if hl7 and (
+                Device.objects.filter(hl7_sending_application=hl7)
+                .exclude(pk=dev.pk)
+                .exists()
+            ):
+                return Response(
+                    {"detail": "Bu HL7 ID (MSH-3) boshqa qurilmada band"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            dev.hl7_sending_application = hl7
+        if "hl7NatSourceIp" in data:
+            try:
+                dev.hl7_nat_source_ip = _parse_nat_ip(data.get("hl7NatSourceIp"))
+            except ValueError as e:
+                return Response(
+                    {"detail": str(e)},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
         dev.save()
         return Response(DeviceSerializer(dev).data)
 
@@ -149,7 +212,7 @@ class DeviceDetailView(APIView):
 
 
 class DeviceVitalsIngestView(APIView):
-    """Qurilma (monitor) vitallarini qabul qilish — IP bo'yicha."""
+    """Qurilma vitallari — ro'yxatdan o'tgan lokal IP bo'yicha."""
 
     def post(self, request, ip: str):
         dev = Device.objects.filter(ip_address=ip).first()
@@ -157,8 +220,12 @@ class DeviceVitalsIngestView(APIView):
             return Response(
                 {"error": "Device not registered"}, status=status.HTTP_404_NOT_FOUND
             )
-        body = request.data if isinstance(request.data, dict) else {}
-        payload = apply_device_vitals_dict(dev, body)
-        if payload:
-            schedule_coro(sio.emit("vitals_update", [payload]))
-        return Response({"success": True, "message": "Data received"})
+        return _ingest_vitals_response(dev, request)
+
+
+class DeviceVitalsByIdView(APIView):
+    """Gateway / agent: HTTPS orqali vitallar — qurilma ID (dev...) bo'yicha."""
+
+    def post(self, request, pk: str):
+        dev = get_object_or_404(Device, pk=pk)
+        return _ingest_vitals_response(dev, request)

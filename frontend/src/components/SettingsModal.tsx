@@ -6,6 +6,17 @@ import { AdmitPatientModal } from './AdmitPatientModal';
 import { DeviceBedAssignModal, DeviceFormModal } from './DeviceFormModal';
 import { formatBedLocationLine } from './LocationCascadeSelects';
 
+function formatLastSeenRelative(ms: number | null | undefined): string {
+  if (ms == null) return '—';
+  const age = Date.now() - ms;
+  if (age < 15_000) return 'hozir';
+  if (age < 60_000) return `${Math.floor(age / 1000)} s oldin`;
+  const m = Math.floor(age / 60_000);
+  if (m < 120) return `${m} daq oldin`;
+  const h = Math.floor(m / 60);
+  return `${h} soat oldin`;
+}
+
 interface SettingsModalProps {
   onClose: () => void;
 }
@@ -459,7 +470,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                         <thead className="text-xs text-zinc-500 uppercase bg-zinc-50 border-b border-zinc-200">
                           <tr>
                             <th className="px-4 py-3">ID / Model</th>
-                            <th className="px-4 py-3">Tarmoq (IP / MAC)</th>
+                            <th className="px-4 py-3">Tarmoq (IP / MAC / NAT)</th>
                             <th className="px-4 py-3">HL7 ID</th>
                             <th className="px-4 py-3">Biriktirilgan joy</th>
                             <th className="px-4 py-3">Holati</th>
@@ -476,6 +487,11 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                               <td className="px-4 py-3 font-mono text-xs">
                                 <div>{device.ipAddress}</div>
                                 <div className="text-zinc-500">{device.macAddress}</div>
+                                {device.hl7NatSourceIp ? (
+                                  <div className="text-emerald-700 mt-0.5" title="HL7 peer = router tashqi IP">
+                                    NAT: {device.hl7NatSourceIp}
+                                  </div>
+                                ) : null}
                               </td>
                               <td className="px-4 py-3 text-xs font-mono text-zinc-600 max-w-[140px] truncate" title={device.hl7SendingApplication || ''}>
                                 {device.hl7SendingApplication || '—'}
@@ -518,8 +534,19 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                               </td>
                               <td className="px-4 py-3">
                                 <div className="flex items-center">
-                                  <div className={`w-2 h-2 rounded-full mr-2 ${device.status === 'online' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                                  <span className="text-zinc-700">{device.status === 'online' ? 'Onlayn' : 'Oflayn'}</span>
+                                  <div className={`w-2 h-2 rounded-full mr-2 shrink-0 ${device.status === 'online' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+                                  <div>
+                                    <span className="text-zinc-700">
+                                      {device.status === 'online' ? 'Onlayn' : 'Oflayn'}
+                                    </span>
+                                    <div className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                                      {device.status === 'online'
+                                        ? formatLastSeenRelative(device.lastSeen)
+                                        : device.lastSeen != null
+                                          ? `oxirgi: ${formatLastSeenRelative(device.lastSeen)}`
+                                          : 'hech qachon'}
+                                    </div>
+                                  </div>
                                 </div>
                               </td>
                               <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
@@ -635,16 +662,28 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                         {hl7ServerDisplay()}
                       </div>
                       <p className="text-sm text-zinc-600">
-                        Standart port <code className="bg-zinc-100 px-1 rounded">6006</code> (MLLP). Bulut serverda xavfsizlik guruhida <code className="bg-zinc-100 px-1 rounded">6006/tcp</code> ochiq bo'lishi kerak. Qurilmani tizimga <strong>lokal IP</strong> bilan qo'shing (masalan 192.168.0.228). Bitta router orqali bir nechta monitor bo'lsa, ixtiyoriy <strong>HL7 MSH-3</strong> maydonini to'ldirib, xabardagi yuboruvchi bilan moslang.
+                        Standart port <code className="bg-zinc-100 px-1 rounded">6006</code> (MLLP). Bulut serverda <code className="bg-zinc-100 px-1 rounded">6006/tcp</code> ochiq bo‘lishi kerak (nginx emas — to‘g‘ridan-to‘g‘ri VPSga). Repoda <code className="bg-zinc-100 px-1 rounded">deploy/open-hl7-port.sh</code> yordamida ufw tekshiriladi.
+                      </p>
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-zinc-800">
+                        <strong>NAT:</strong> monitor lokal (192.168…) qoladi; server HL7 ulanishda ko‘radigan manzil — klinikaning <strong>tashqi IP</strong>si. «Qurilma» formasida <strong>NAT tashqi IP</strong> maydonini shu manzil bilan to‘ldiring yoki har bir monitor uchun <strong>HL7 MSH-3</strong>ni Mindray xabari bilan bir xil qiling (bir tashqi IPdan bir nechta monitor).
+                      </div>
+                      <p className="text-sm text-zinc-600">
+                        <code className="bg-zinc-100 px-1 rounded">GET /api/health</code> javobida <code className="bg-zinc-100 px-1 rounded">hl7.listenPort</code> va <code className="bg-zinc-100 px-1 rounded">deviceOfflineAfterSec</code> ko‘rinadi (diagnostika).
                       </p>
 
                       <h4 className="font-bold text-zinc-900 mt-6">REST API (alternativa)</h4>
-                      <p className="text-sm text-zinc-600">Agar qurilma yoki gateway REST orqali yuborsa:</p>
+                      <p className="text-sm text-zinc-600">LANdagi gateway HTTPS orqali yuborsa — IP emas, qurilma ID bilan:</p>
                       
-                      <div className="bg-zinc-50 p-4 rounded-lg border border-zinc-200 font-mono text-sm">
-                        <div className="text-emerald-600 mb-2 font-bold">POST /api/device/[IP_MANZIL]/vitals</div>
+                      <div className="bg-zinc-50 p-4 rounded-lg border border-zinc-200 font-mono text-sm space-y-3">
+                        <div>
+                          <div className="text-emerald-600 font-bold">POST /api/devices/[QURILMA_ID]/vitals</div>
+                          <div className="text-zinc-500 text-xs mt-1">Masalan dev1775… — sozlamalar jadvalidagi ID</div>
+                        </div>
+                        <div>
+                          <div className="text-emerald-600 font-bold">POST /api/device/[LOKAL_IP]/vitals</div>
+                          <div className="text-zinc-500 text-xs mt-1">Ro‘yxatdagi lokal IP bilan mos kelishi kerak</div>
+                        </div>
                         <div className="text-zinc-500">Content-Type: application/json</div>
-                        <br/>
                         <div className="text-zinc-700">
                           {`{
   "hr": 75,
@@ -652,8 +691,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   "nibpSys": 120,
   "nibpDia": 80,
   "rr": 16,
-  "temp": 36.6,
-  "ecg": [0.1, 0.2, 1.5, -0.3, ...] // 250Hz ma'lumot
+  "temp": 36.6
 }`}
                         </div>
                       </div>

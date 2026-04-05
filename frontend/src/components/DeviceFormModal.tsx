@@ -15,6 +15,7 @@ type DeviceRow = {
   macAddress?: string;
   model?: string;
   hl7SendingApplication?: string;
+  hl7NatSourceIp?: string | null;
   bedId?: string | null;
 };
 
@@ -44,6 +45,7 @@ export function DeviceFormModal({
   const [macAddress, setMacAddress] = useState('');
   const [model, setModel] = useState('');
   const [hl7SendingApplication, setHl7SendingApplication] = useState('');
+  const [hl7NatSourceIp, setHl7NatSourceIp] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -53,6 +55,7 @@ export function DeviceFormModal({
       setMacAddress(editingDevice.macAddress ?? '');
       setModel(editingDevice.model ?? '');
       setHl7SendingApplication(editingDevice.hl7SendingApplication ?? '');
+      setHl7NatSourceIp(editingDevice.hl7NatSourceIp ?? '');
       const c = cascadeFromBedId(editingDevice.bedId, beds, rooms);
       setDepartmentId(c.departmentId);
       setRoomId(c.roomId);
@@ -65,6 +68,7 @@ export function DeviceFormModal({
       setMacAddress('');
       setModel('');
       setHl7SendingApplication('');
+      setHl7NatSourceIp('');
     }
   }, [open, editingDevice, beds, rooms]);
 
@@ -85,6 +89,7 @@ export function DeviceFormModal({
         macAddress: macAddress.trim(),
         model: model.trim(),
         hl7SendingApplication: hl7SendingApplication.trim(),
+        hl7NatSourceIp: hl7NatSourceIp.trim(),
         bedId: bedId || '',
       };
       const url = isEdit
@@ -95,11 +100,15 @@ export function DeviceFormModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error('Saqlashda xatolik');
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        const msg = typeof errBody?.detail === 'string' ? errBody.detail : 'Saqlashda xatolik';
+        throw new Error(msg);
+      }
       onSaved();
       onClose();
-    } catch {
-      onError('Saqlashda xatolik yuz berdi.');
+    } catch (e) {
+      onError(e instanceof Error ? e.message : 'Saqlashda xatolik yuz berdi.');
     } finally {
       setSaving(false);
     }
@@ -175,6 +184,23 @@ export function DeviceFormModal({
                 placeholder="192.168.0.228"
                 className="w-full border border-zinc-300 rounded-lg px-3 py-2.5 text-zinc-900 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
               />
+              <p className="text-[11px] text-zinc-500 mt-1 leading-snug">
+                Bulut serverga HL7 chiqarilsa, server ko‘radigan manzil odatda routerning <strong>tashqi</strong> IPsi
+                bo‘ladi — pastdagi «NAT tashqi IP» maydoniga shuni kiriting; bir nechta monitor bo‘lsa HL7 MSH-3 majburiy.
+              </p>
+            </div>
+            <div>
+              <label htmlFor="device-nat" className="block text-sm font-medium text-zinc-700 mb-1">
+                NAT tashqi IP (HL7 uchun, ixtiyoriy)
+              </label>
+              <input
+                id="device-nat"
+                type="text"
+                value={hl7NatSourceIp}
+                onChange={(e) => setHl7NatSourceIp(e.target.value)}
+                placeholder="Masalan klinikaning Internet IP (91.x.y.z)"
+                className="w-full border border-zinc-300 rounded-lg px-3 py-2.5 text-zinc-900 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+              />
             </div>
             <div>
               <label htmlFor="device-mac" className="block text-sm font-medium text-zinc-700 mb-1">
@@ -204,14 +230,14 @@ export function DeviceFormModal({
             </div>
             <div>
               <label htmlFor="device-hl7" className="block text-sm font-medium text-zinc-700 mb-1">
-                HL7 MSH-3 (ixtiyoriy, bir nechta monitor / NAT)
+                HL7 MSH-3 (yuboruvchi ID, Mindray xabari bilan bir xil bo‘lsin)
               </label>
               <input
                 id="device-hl7"
                 type="text"
                 value={hl7SendingApplication}
                 onChange={(e) => setHl7SendingApplication(e.target.value)}
-                placeholder="Faqat kerak bo‘lsa"
+                placeholder="Bo‘sh qoldiring yoki monitor MSH-3 dagi qiymat"
                 className="w-full border border-zinc-300 rounded-lg px-3 py-2.5 text-zinc-900 focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
               />
             </div>

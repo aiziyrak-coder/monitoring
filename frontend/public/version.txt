@@ -1,1 +1,1 @@
-bed-path-table-v1
+platform-device-link-v1

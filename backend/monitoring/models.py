@@ -66,6 +66,8 @@ class Device(models.Model):
     last_seen_ms = models.BigIntegerField(null=True, blank=True)
     # HL7 MSH-3 (Sending Application) — bir nechta monitor bitta NAT orqida bo'lsa
     hl7_sending_application = models.CharField(max_length=128, blank=True, default="")
+    # Klinika routerining tashqi IPsi — HL7 ulanishda server ko‘radigan peer shu bo‘lsa, lokal ip_address bilan moslashtirish
+    hl7_nat_source_ip = models.GenericIPAddressField(null=True, blank=True)
 
     class Meta:
         ordering = ["model"]

@@ -41,7 +41,28 @@ def _find_device(msg: str, peer: str) -> Device | None:
         dev = q.first()
         if dev:
             return dev
-    return Device.objects.filter(ip_address=peer).first()
+    dev = Device.objects.filter(ip_address=peer).first()
+    if dev:
+        return dev
+    dev = (
+        Device.objects.filter(hl7_nat_source_ip=peer)
+        .exclude(hl7_nat_source_ip__isnull=True)
+        .first()
+    )
+    if dev:
+        return dev
+    if app:
+        log.warning(
+            "HL7: Device topilmadi peer=%s MSH-3=%r — HL7 ID yoki «NAT tashqi IP»ni tekshiring",
+            peer,
+            app,
+        )
+    else:
+        log.warning(
+            "HL7: Device topilmadi peer=%s (xabarda MSH-3 yo'q) — lokal IP / NAT tashqi IP / HL7 ID",
+            peer,
+        )
+    return None
 
 
 def _process_one_message(msg: str, peer: str) -> None:
@@ -51,7 +72,6 @@ def _process_one_message(msg: str, peer: str) -> None:
         return
     dev = _find_device(msg, peer)
     if not dev:
-        log.warning("HL7: Device topilmadi peer=%s", peer)
         return
     payload = apply_device_vitals_dict(dev, vitals)
     if payload:

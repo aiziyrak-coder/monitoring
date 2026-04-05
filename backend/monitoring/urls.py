@@ -13,6 +13,7 @@ urlpatterns = [
     path("beds", views.BedListCreateView.as_view()),
     path("beds/<str:pk>", views.BedDetailView.as_view()),
     path("devices", views.DeviceListCreateView.as_view()),
+    path("devices/<str:pk>/vitals", views.DeviceVitalsByIdView.as_view()),
     path("devices/<str:pk>", views.DeviceDetailView.as_view()),
     path("device/<str:ip>/vitals", views.DeviceVitalsIngestView.as_view()),
 ]
