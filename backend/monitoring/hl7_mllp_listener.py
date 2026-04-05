@@ -1,6 +1,7 @@
 """Mindray HL7 (MLLP) — port 6006, peer IP yoki MSH-3 bo'yicha Device."""
 from __future__ import annotations
 
+import ipaddress
 import logging
 import socket
 import sys
@@ -29,7 +30,23 @@ def _peer_ip(addr: tuple) -> str:
     ip = addr[0]
     if isinstance(ip, str) and ip.startswith("::ffff:"):
         return ip[7:]
-    return ip
+    return str(ip)
+
+
+def _normalize_peer_ip(peer: str) -> str:
+    """Socketdan kelgan manzilni DB (GenericIPAddressField) bilan solishtirish uchun."""
+    s = (peer or "").strip()
+    if not s:
+        return s
+    try:
+        ip_obj = ipaddress.ip_address(s)
+        if isinstance(ip_obj, ipaddress.IPv6Address):
+            if ip_obj.ipv4_mapped:
+                return str(ip_obj.ipv4_mapped)
+            return ip_obj.compressed
+        return str(ip_obj)
+    except ValueError:
+        return s
 
 
 def _resolve_device(msg: str, peer: str) -> Device | None:
@@ -46,11 +63,17 @@ def _resolve_device(msg: str, peer: str) -> Device | None:
     dev = Device.objects.filter(ip_address=peer).first()
     if dev:
         return dev
-    dev = (
-        Device.objects.filter(hl7_nat_source_ip=peer)
-        .exclude(hl7_nat_source_ip__isnull=True)
-        .first()
+    nat_qs = Device.objects.filter(hl7_nat_source_ip=peer).exclude(
+        hl7_nat_source_ip__isnull=True
     )
+    nat_n = nat_qs.count()
+    if nat_n > 1:
+        log.warning(
+            "HL7: bir xil NAT IP (%s) ga %s ta qurilma — birinchisi ishlatiladi; HL7 ID bilan ajrating",
+            peer,
+            nat_n,
+        )
+    dev = nat_qs.first()
     if dev:
         return dev
     return None
@@ -96,14 +119,34 @@ def _process_one_message(msg: str, peer: str) -> None:
 
 
 def _handle_client(conn: socket.socket, addr: tuple) -> None:
-    peer = _peer_ip(addr)
+    peer = _normalize_peer_ip(_peer_ip(addr))
+    max_buf = int(getattr(settings, "HL7_MAX_BUFFER_BYTES", 2 * 1024 * 1024))
     log.info("HL7: TCP ulanish %s (port %s)", peer, settings.HL7_LISTEN_PORT)
+    # MLLP xabari kelmasa ham: NAT / lokal IP bo‘yicha qurilmani onlayn qilish
+    try:
+        dev0 = _resolve_device("", peer)
+        if dev0:
+            apply_device_vitals_dict(dev0, {})
+            log.info(
+                "HL7: TCP bilan qurilma onlayn (id=%s, peer=%s)",
+                dev0.pk,
+                peer,
+            )
+    except Exception:
+        log.exception("HL7: TCP dan keyin qurilma yangilash xato peer=%s", peer)
     buf = bytearray()
     try:
         conn.settimeout(300.0)
         while True:
             chunk = conn.recv(8192)
             if not chunk:
+                break
+            if len(buf) + len(chunk) > max_buf:
+                log.warning(
+                    "HL7: bufer limiti (%s bayt) oshdi peer=%s — ulanish yopildi",
+                    max_buf,
+                    peer,
+                )
                 break
             buf.extend(chunk)
             while True:

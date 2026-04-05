@@ -4,14 +4,19 @@ Django settings — ClinicMonitoring backend.
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.environ.get(
-    "DJANGO_SECRET_KEY",
-    "dev-only-change-in-production-clinic-monitoring-unsafe",
-)
+_DEFAULT_DEV_SECRET = "dev-only-change-in-production-clinic-monitoring-unsafe"
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", _DEFAULT_DEV_SECRET)
 
 DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() in ("1", "true", "yes")
+
+if not DEBUG and SECRET_KEY == _DEFAULT_DEV_SECRET:
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY is required when DEBUG=false (default development secret is not allowed)."
+    )
 
 ALLOWED_HOSTS = [
     h.strip()
@@ -108,6 +113,9 @@ CORS_ALLOWED_ORIGINS = [
 ]
 if not DEBUG:
     CORS_ALLOW_ALL_ORIGINS = False
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 # Mindray HL7 MLLP (monitor «Server IP» / «Port»)
 HL7_LISTENER_ENABLED = os.environ.get("HL7_LISTENER_ENABLED", "1").lower() in (
@@ -117,6 +125,8 @@ HL7_LISTENER_ENABLED = os.environ.get("HL7_LISTENER_ENABLED", "1").lower() in (
 )
 HL7_LISTEN_HOST = os.environ.get("HL7_LISTEN_HOST", "0.0.0.0")
 HL7_LISTEN_PORT = int(os.environ.get("HL7_LISTEN_PORT", "6006"))
+# HL7 klienti yuborgan yig‘ma bufer (DoS / xotira himoyasi)
+HL7_MAX_BUFFER_BYTES = int(os.environ.get("HL7_MAX_BUFFER_BYTES", str(2 * 1024 * 1024)))
 
 # monitoring.* (HL7 MLLP va boshqalar) — aks holda faqat uvicorn qatorlari journalctl da ko‘rinadi
 LOGGING = {
@@ -128,6 +138,11 @@ LOGGING = {
         },
     },
     "loggers": {
+        "django.request": {
+            "handlers": ["console"],
+            "level": "WARNING",
+            "propagate": False,
+        },
         "monitoring": {
             "handlers": ["console"],
             "level": "INFO",

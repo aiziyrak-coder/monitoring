@@ -142,6 +142,13 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
     return () => controller.abort();
   }, []);
 
+  useEffect(() => {
+    if (activeTab !== 'devices') return;
+    fetchData();
+    const id = setInterval(() => fetchData(), 12_000);
+    return () => clearInterval(id);
+  }, [activeTab]);
+
   const closeDialogs = () => {
     setPromptConfig(null);
     setConfirmConfig(null);
