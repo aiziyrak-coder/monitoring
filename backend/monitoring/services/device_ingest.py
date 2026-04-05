@@ -7,7 +7,7 @@ from typing import Any
 
 from django.db import close_old_connections
 
-from monitoring.models import Device, Patient
+from monitoring.models import Device, Patient, VitalHistory
 from monitoring.services.news2 import (
     DEFAULT_ALARM_LIMITS,
     calculate_news2,
@@ -17,6 +17,37 @@ from monitoring.services.patient_payload import patient_to_wire_dict
 from monitoring.services.vitals_alarm import apply_limit_alarms, apply_scheduled_check_window
 
 log = logging.getLogger(__name__)
+
+_HISTORY_INTERVAL_MS = 5000
+_HISTORY_MAX_ROWS = 60
+
+
+def _append_vitals_history(p: Patient, now_ms: int) -> None:
+    last_ts = (
+        VitalHistory.objects.filter(patient=p)
+        .order_by("-timestamp_ms")
+        .values_list("timestamp_ms", flat=True)
+        .first()
+    )
+    if last_ts is not None and (now_ms - last_ts) < _HISTORY_INTERVAL_MS:
+        return
+    VitalHistory.objects.create(
+        patient=p,
+        timestamp_ms=now_ms,
+        hr=float(p.hr),
+        spo2=float(p.spo2),
+        nibp_sys=float(p.nibp_sys),
+        nibp_dia=float(p.nibp_dia),
+        rr=float(p.rr),
+        temp=float(p.temp),
+    )
+    keep = list(
+        VitalHistory.objects.filter(patient=p)
+        .order_by("-timestamp_ms")
+        .values_list("pk", flat=True)
+    )
+    if len(keep) > _HISTORY_MAX_ROWS:
+        VitalHistory.objects.filter(pk__in=keep[_HISTORY_MAX_ROWS:]).delete()
 
 
 def build_vitals_socket_payload(wire: dict) -> dict[str, Any]:
@@ -35,6 +66,8 @@ def build_vitals_socket_payload(wire: dict) -> dict[str, Any]:
     }
     if "lastRealVitalsMs" in wire:
         out["lastRealVitalsMs"] = wire["lastRealVitalsMs"]
+    if "history" in wire:
+        out["history"] = wire["history"]
     return out
 
 
@@ -49,13 +82,20 @@ def apply_device_vitals_dict(dev: Device, body: dict) -> dict[str, Any] | None:
     dev.last_seen_ms = now_ms
     dev.save(update_fields=["status", "last_seen_ms"])
 
-    if not dev.bed_id or not body:
+    if not body:
+        return None
+
+    if not dev.bed_id:
+        log.warning(
+            "Vitallar yozilmadi: qurilma %s hech qaysi karavatga biriktirilmagan — Tizim sozlamalari → Qurilmalar",
+            dev.pk,
+        )
         return None
 
     p = Patient.objects.filter(bed_id=dev.bed_id).first()
     if not p:
         log.warning(
-            "Qurilma joyga biriktirilgan (bed=%s), lekin shu joyda bemor yo'q — vitallar yozilmaydi",
+            "Qurilma karavatga biriktirilgan (bed=%s), lekin shu karavatda bemor yo'q — vitallar yozilmaydi",
             dev.bed_id,
         )
         return None
@@ -97,5 +137,13 @@ def apply_device_vitals_dict(dev: Device, body: dict) -> dict[str, Any] | None:
     apply_scheduled_check_window(p, v, now_ms)
     p.save()
 
-    wire = patient_to_wire_dict(p, omit_history=True)
+    if wrote_vital:
+        _append_vitals_history(p, now_ms)
+        hist_rows = list(
+            VitalHistory.objects.filter(patient=p).order_by("timestamp_ms")
+        )
+        wire = patient_to_wire_dict(p, history_override=hist_rows, omit_history=False)
+    else:
+        wire = patient_to_wire_dict(p, omit_history=True)
+
     return build_vitals_socket_payload(wire)

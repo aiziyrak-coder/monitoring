@@ -107,15 +107,6 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
     }
   }, [activeTab, patient, localLimits]);
 
-  const chartData = useMemo(() => {
-    if (!patient) return [];
-    return (patient.history || []).map(h => ({
-      time: h.timestamp ? format(new Date(h.timestamp), 'HH:mm:ss') : '',
-      hr: Math.round(h.hr),
-      spo2: Math.round(h.spo2)
-    }));
-  }, [patient?.history]);
-
   if (!patient) return null;
 
   const maskedName = privacyMode ? (patient.name || '').replace(/([A-Z]\.\s[A-Z]).*/, '$1***') : (patient.name || 'Noma\'lum');
@@ -123,6 +114,24 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
   const alarm = patient.alarm || { level: 'none' };
   const hasLiveVitals =
     patient.lastRealVitalsMs != null && patient.lastRealVitalsMs > 0;
+
+  const chartData = useMemo(() => {
+    if (!patient) return [];
+    const fromHist = (patient.history || []).map(h => ({
+      time: h.timestamp ? format(new Date(h.timestamp), 'HH:mm:ss') : '',
+      hr: Math.round(h.hr),
+      spo2: Math.round(h.spo2)
+    }));
+    if (fromHist.length > 0) return fromHist;
+    if (hasLiveVitals && (vitals.hr > 0 || vitals.spo2 > 0)) {
+      return [{
+        time: format(new Date(), 'HH:mm:ss'),
+        hr: Math.round(vitals.hr),
+        spo2: Math.round(vitals.spo2),
+      }];
+    }
+    return [];
+  }, [patient, patient.history, hasLiveVitals, vitals.hr, vitals.spo2]);
 
   const handleExport = () => {
     const csvContent = "data:text/csv;charset=utf-8," 
@@ -291,10 +300,15 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
               </div>
 
               {!hasLiveVitals && (
-                <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-950">
-                  <strong>Jonli vitallar kutilmoqda.</strong> Faqat shu karavatga biriktirilgan monitorning HL7 (OBX)
-                  yoki REST orqali yuborilgan haqiqiy ma’lumotlar shu kartaga yoziladi. Sozlamalar va ulanish —{" "}
-                  <strong>Tizim sozlamalari → Integratsiya</strong>.
+                <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-950 space-y-1">
+                  <p>
+                    <strong>Jonli vitallar kutilmoqda.</strong> Monitor HL7 (OBX) yoki REST orqali yuborishi kerak.
+                  </p>
+                  <p className="text-xs text-amber-900/90 leading-relaxed">
+                    <strong>Muhim:</strong> qurilma <strong>shu bemor yotgan karavat</strong>ga biriktirilgan bo‘lsin
+                    (Tizim sozlamalari → Qurilmalar). Aks holda vitallar kartaga yozilmaydi. Ulanish —{" "}
+                    <strong>Integratsiya</strong>.
+                  </p>
                 </div>
               )}
 
