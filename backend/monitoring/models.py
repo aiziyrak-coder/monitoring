@@ -64,6 +64,8 @@ class Device(models.Model):
     )
     status = models.CharField(max_length=16, choices=STATUS, default="offline")
     last_seen_ms = models.BigIntegerField(null=True, blank=True)
+    # HL7 MSH-3 (Sending Application) — bir nechta monitor bitta NAT orqida bo'lsa
+    hl7_sending_application = models.CharField(max_length=128, blank=True, default="")
 
     class Meta:
         ordering = ["model"]

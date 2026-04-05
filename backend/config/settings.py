@@ -109,6 +109,15 @@ CORS_ALLOWED_ORIGINS = [
 if not DEBUG:
     CORS_ALLOW_ALL_ORIGINS = False
 
+# Mindray HL7 MLLP (monitor «Server IP» / «Port»)
+HL7_LISTENER_ENABLED = os.environ.get("HL7_LISTENER_ENABLED", "1").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+HL7_LISTEN_HOST = os.environ.get("HL7_LISTEN_HOST", "0.0.0.0")
+HL7_LISTEN_PORT = int(os.environ.get("HL7_LISTEN_PORT", "6006"))
+
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",

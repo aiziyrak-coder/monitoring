@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, Server, Building2, MonitorSmartphone, Users, Plus, Trash2, Edit2, Info, AlertTriangle } from 'lucide-react';
-import { apiUrl } from '../lib/api';
+import { X, Server, Building2, MonitorSmartphone, Users, Plus, Trash2, Edit2, Info, AlertTriangle, Link2 } from 'lucide-react';
+import { apiUrl, hl7ServerDisplay } from '../lib/api';
 import { useStore } from '../store';
 
 interface SettingsModalProps {
@@ -8,12 +8,12 @@ interface SettingsModalProps {
 }
 
 // Custom Dialogs to replace prompt/confirm in iframe
-function CustomPrompt({ isOpen, title, fields, onSubmit, onCancel }: { isOpen: boolean, title: string, fields: {name: string, label: string, placeholder?: string}[], onSubmit: (data: any) => void, onCancel: () => void }) {
+function CustomPrompt({ isOpen, title, fields, initialValues, onSubmit, onCancel }: { isOpen: boolean, title: string, fields: {name: string, label: string, placeholder?: string}[], initialValues?: Record<string, string>, onSubmit: (data: any) => void, onCancel: () => void }) {
   const [values, setValues] = useState<Record<string, string>>({});
   
   useEffect(() => {
-    if (isOpen) setValues({});
-  }, [isOpen]);
+    if (isOpen) setValues(initialValues ? { ...initialValues } : {});
+  }, [isOpen, initialValues]);
 
   if (!isOpen) return null;
 
@@ -74,7 +74,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const [error, setError] = useState<string | null>(null);
 
   // Dialog states
-  const [promptConfig, setPromptConfig] = useState<{isOpen: boolean, title: string, fields: any[], onSubmit: (data: any) => void} | null>(null);
+  const [promptConfig, setPromptConfig] = useState<{isOpen: boolean, title: string, fields: any[], initialValues?: Record<string, string>, onSubmit: (data: any) => void} | null>(null);
   const [confirmConfig, setConfirmConfig] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void} | null>(null);
 
   const fetchData = async (signal?: AbortSignal) => {
@@ -219,9 +219,10 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
       isOpen: true,
       title: "Yangi qurilma qo'shish",
       fields: [
-        { name: 'ipAddress', label: "IP Manzil", placeholder: "192.168.1.100" },
+        { name: 'ipAddress', label: "Lokal IP (LAN)", placeholder: "192.168.0.228" },
         { name: 'macAddress', label: "MAC Manzil", placeholder: "00:1A:2B:3C:4D:5E" },
-        { name: 'model', label: "Model", placeholder: "Mindray uMEC10" }
+        { name: 'model', label: "Model", placeholder: "Mindray uMEC10" },
+        { name: 'hl7SendingApplication', label: "HL7 MSH-3 (ixtiyoriy, bir routerdan bir nechta monitor)", placeholder: "Masalan: uMEC10-1" },
       ],
       onSubmit: async (vals) => {
         if (!vals.ipAddress) return closeDialogs();
@@ -234,6 +235,44 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
           setError("Xatolik yuz berdi");
         }
       }
+    });
+  };
+
+  const editDevice = (device: { id: string; ipAddress?: string; macAddress?: string; model?: string; hl7SendingApplication?: string }) => {
+    setPromptConfig({
+      isOpen: true,
+      title: "Qurilmani tahrirlash",
+      initialValues: {
+        ipAddress: device.ipAddress ?? '',
+        macAddress: device.macAddress ?? '',
+        model: device.model ?? '',
+        hl7SendingApplication: device.hl7SendingApplication ?? '',
+      },
+      fields: [
+        { name: 'ipAddress', label: "Lokal IP (LAN)", placeholder: "192.168.0.228" },
+        { name: 'macAddress', label: "MAC Manzil", placeholder: "" },
+        { name: 'model', label: "Model", placeholder: "" },
+        { name: 'hl7SendingApplication', label: "HL7 MSH-3 (ixtiyoriy)", placeholder: "" },
+      ],
+      onSubmit: async (vals) => {
+        try {
+          await fetch(apiUrl(`/api/devices/${device.id}`), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ipAddress: vals.ipAddress,
+              macAddress: vals.macAddress,
+              model: vals.model,
+              hl7SendingApplication: vals.hl7SendingApplication || '',
+            }),
+          });
+          closeDialogs();
+          fetchData();
+        } catch (e) {
+          console.error(e);
+          setError("Xatolik yuz berdi");
+        }
+      },
     });
   };
 
@@ -410,6 +449,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                           <tr>
                             <th className="px-4 py-3">ID / Model</th>
                             <th className="px-4 py-3">Tarmoq (IP / MAC)</th>
+                            <th className="px-4 py-3">HL7 ID</th>
                             <th className="px-4 py-3">Biriktirilgan joy</th>
                             <th className="px-4 py-3">Holati</th>
                             <th className="px-4 py-3 text-right">Amallar</th>
@@ -426,6 +466,9 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                                 <div>{device.ipAddress}</div>
                                 <div className="text-zinc-500">{device.macAddress}</div>
                               </td>
+                              <td className="px-4 py-3 text-xs font-mono text-zinc-600 max-w-[140px] truncate" title={device.hl7SendingApplication || ''}>
+                                {device.hl7SendingApplication || '—'}
+                              </td>
                               <td className="px-4 py-3">
                                 {device.bedId ? (
                                   <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded border border-blue-200">{device.bedId}</span>
@@ -440,7 +483,8 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                                 </div>
                               </td>
                               <td className="px-4 py-3 text-right space-x-2">
-                                <button onClick={() => assignBedToDevice(device.id)} className="p-1.5 text-zinc-500 hover:text-blue-600 bg-white border border-zinc-200 rounded-md" title="Joyga biriktirish"><Edit2 className="w-4 h-4" /></button>
+                                <button onClick={() => editDevice(device)} className="p-1.5 text-zinc-500 hover:text-emerald-600 bg-white border border-zinc-200 rounded-md" title="Tahrirlash"><Edit2 className="w-4 h-4" /></button>
+                                <button onClick={() => assignBedToDevice(device.id)} className="p-1.5 text-zinc-500 hover:text-blue-600 bg-white border border-zinc-200 rounded-md" title="Joyga biriktirish"><Link2 className="w-4 h-4" /></button>
                                 <button onClick={() => deleteDevice(device.id)} className="p-1.5 text-zinc-500 hover:text-red-600 bg-white border border-zinc-200 rounded-md"><Trash2 className="w-4 h-4" /></button>
                               </td>
                             </tr>
@@ -517,8 +561,19 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                       <h4 className="font-bold text-zinc-900">1-qadam: Tarmoqqa ulash</h4>
                       <p className="text-sm text-zinc-600">Monitorni tarmoqqa ulang va unga statik IP manzil bering (Masalan: <code className="bg-zinc-100 px-1 py-0.5 rounded text-zinc-800">192.168.1.105</code>). Bu IP manzilni "Qurilmalar" bo'limidan tizimga kiriting.</p>
 
-                      <h4 className="font-bold text-zinc-900">2-qadam: Ma'lumotlarni yuborish (API)</h4>
-                      <p className="text-sm text-zinc-600">Agar qurilma yoki oraliq server (Gateway) REST API orqali ma'lumot yuborsa, quyidagi manzilga POST so'rov yuborishi kerak:</p>
+                      <h4 className="font-bold text-zinc-900">Mindray HL7 (tavsiya etiladi)</h4>
+                      <p className="text-sm text-zinc-600">
+                        Monitor menyusida «Интернет» bo'limida <strong>HL7 protocol</strong> yoqilgan bo'lsin. Server sifatida shu tizimning ochiq TCP manzilini kiriting:
+                      </p>
+                      <div className="bg-emerald-50 p-4 rounded-lg border border-emerald-200 font-mono text-sm text-emerald-900">
+                        {hl7ServerDisplay()}
+                      </div>
+                      <p className="text-sm text-zinc-600">
+                        Standart port <code className="bg-zinc-100 px-1 rounded">6006</code> (MLLP). Bulut serverda xavfsizlik guruhida <code className="bg-zinc-100 px-1 rounded">6006/tcp</code> ochiq bo'lishi kerak. Qurilmani tizimga <strong>lokal IP</strong> bilan qo'shing (masalan 192.168.0.228). Bitta router orqali bir nechta monitor bo'lsa, ixtiyoriy <strong>HL7 MSH-3</strong> maydonini to'ldirib, xabardagi yuboruvchi bilan moslang.
+                      </p>
+
+                      <h4 className="font-bold text-zinc-900 mt-6">REST API (alternativa)</h4>
+                      <p className="text-sm text-zinc-600">Agar qurilma yoki gateway REST orqali yuborsa:</p>
                       
                       <div className="bg-zinc-50 p-4 rounded-lg border border-zinc-200 font-mono text-sm">
                         <div className="text-emerald-600 mb-2 font-bold">POST /api/device/[IP_MANZIL]/vitals</div>

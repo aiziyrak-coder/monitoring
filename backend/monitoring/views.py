@@ -5,7 +5,10 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from monitoring.asgi_support import schedule_coro
+from monitoring.io_bus import sio
 from monitoring.models import Bed, Department, Device, Patient, Room
+from monitoring.services.device_ingest import apply_device_vitals_dict
 from monitoring.serializers import (
     BedCreateSerializer,
     BedSerializer,
@@ -111,6 +114,8 @@ class DeviceListCreateView(APIView):
             model=ser.validated_data["model"],
             bed=bed,
             status="offline",
+            hl7_sending_application=ser.validated_data.get("hl7SendingApplication")
+            or "",
         )
         dev.save()
         return Response(DeviceSerializer(dev).data, status=status.HTTP_201_CREATED)
@@ -133,6 +138,8 @@ class DeviceDetailView(APIView):
             dev.ip_address = data["ipAddress"]
         if "macAddress" in data:
             dev.mac_address = data["macAddress"]
+        if "hl7SendingApplication" in data:
+            dev.hl7_sending_application = data["hl7SendingApplication"] or ""
         dev.save()
         return Response(DeviceSerializer(dev).data)
 
@@ -150,26 +157,8 @@ class DeviceVitalsIngestView(APIView):
             return Response(
                 {"error": "Device not registered"}, status=status.HTTP_404_NOT_FOUND
             )
-        dev.status = "online"
-        dev.last_seen_ms = int(time.time() * 1000)
-        dev.save(update_fields=["status", "last_seen_ms"])
-
         body = request.data if isinstance(request.data, dict) else {}
-        if dev.bed_id:
-            p = Patient.objects.filter(bed_id=dev.bed_id).first()
-            if p and body:
-                for src, dst in (
-                    ("hr", "hr"),
-                    ("spo2", "spo2"),
-                    ("nibpSys", "nibp_sys"),
-                    ("nibpDia", "nibp_dia"),
-                    ("rr", "rr"),
-                    ("temp", "temp"),
-                ):
-                    if src in body:
-                        setattr(p, dst, body[src])
-                if "nibpTime" in body:
-                    p.nibp_time_ms = int(body["nibpTime"])
-                p.save()
-
+        payload = apply_device_vitals_dict(dev, body)
+        if payload:
+            schedule_coro(sio.emit("vitals_update", [payload]))
         return Response({"success": True, "message": "Data received"})

@@ -15,6 +15,7 @@ backend/.venv/
 backend/**/__pycache__/
 backend/*.sqlite3
 backend/db.sqlite3
+backend/db.sqlite3-journal
 backend/staticfiles/
 backend/gunicorn.pid
 _*.txt

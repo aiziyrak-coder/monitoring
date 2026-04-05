@@ -28,12 +28,24 @@ class BedSerializer(serializers.ModelSerializer):
 class DeviceSerializer(serializers.ModelSerializer):
     ipAddress = serializers.CharField(source="ip_address")
     macAddress = serializers.CharField(source="mac_address")
+    hl7SendingApplication = serializers.CharField(
+        source="hl7_sending_application", read_only=True
+    )
     bedId = serializers.SerializerMethodField()
     lastSeen = serializers.SerializerMethodField()
 
     class Meta:
         model = Device
-        fields = ("id", "ipAddress", "macAddress", "model", "bedId", "status", "lastSeen")
+        fields = (
+            "id",
+            "ipAddress",
+            "macAddress",
+            "model",
+            "hl7SendingApplication",
+            "bedId",
+            "status",
+            "lastSeen",
+        )
 
     def get_bedId(self, obj: Device):
         return obj.bed_id if obj.bed_id else None
@@ -63,6 +75,9 @@ class DeviceCreateSerializer(serializers.Serializer):
     macAddress = serializers.CharField()
     model = serializers.CharField()
     bedId = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    hl7SendingApplication = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
 
 
 class DeviceUpdateSerializer(serializers.Serializer):
@@ -73,3 +88,6 @@ class DeviceUpdateSerializer(serializers.Serializer):
     model = serializers.CharField(required=False, allow_blank=True)
     ipAddress = serializers.CharField(required=False)
     macAddress = serializers.CharField(required=False, allow_blank=True)
+    hl7SendingApplication = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )

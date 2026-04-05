@@ -14,6 +14,10 @@ class MonitoringConfig(AppConfig):
             return
         if "runserver" in sys.argv and os.environ.get("RUN_MAIN") != "true":
             return
+        from monitoring.hl7_mllp_listener import start_hl7_listener_if_enabled
+
+        start_hl7_listener_if_enabled()
+
         # Production (DEBUG=false): faqat qurilma REST / socket — tasodifiy vitallar yo'q
         from django.conf import settings
 
