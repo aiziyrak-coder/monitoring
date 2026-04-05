@@ -91,10 +91,22 @@ def _process_one_message(msg: str, peer: str) -> None:
         else:
             # Aksar holatda Mindray OBX kodlari parse qilinmasa ham ulanish «onlayn» bo‘lsin
             apply_device_vitals_dict(dev, {})
-            log.info(
-                "HL7: qurilma topildi, OBX vitallar parse qilinmadi (peer=%s) — holat yangilandi",
-                peer,
+            obx_n = sum(
+                1
+                for seg in msg.replace("\n", "\r").split("\r")
+                if seg.strip().startswith("OBX|")
             )
+            if obx_n:
+                log.warning(
+                    "HL7: %s ta OBX bor, lekin vitallar ajratilmadi (peer=%s) — Mindray OBX kodini tekshiring",
+                    obx_n,
+                    peer,
+                )
+            else:
+                log.info(
+                    "HL7: OBX yo'q — faqat ulanish / boshqa xabar (peer=%s); ORU vitallar yuborilishi kerak",
+                    peer,
+                )
         return
 
     app = extract_msh_sending_application(msg)

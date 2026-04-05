@@ -292,9 +292,10 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
 
               {!hasLiveVitals && (
                 <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-950">
-                  <strong>Qurilma vitallari hali kelmagan.</strong> Bemor shu karavatga biriktirilgan monitor
-                  HL7 orqali serverga ulangan va MSH-3 / NAT sozlamalari mos bo‘lgach, raqamlar avtomatik
-                  yangilanadi.
+                  <strong>Jonli vitallar hali yozilmagan.</strong> Qurilma onlayn bo‘lishi mumkin, lekin
+                  bemor kartasiga raqamlar faqat HL7 xabarida <strong>OBX</strong> (masalan, YUCh, SpO2)
+                  kelganda tushadi. Mindrayda HL7 <strong>ORU / vitallar yuborish</strong> yoqilganini va
+                  monitor tizim vaqtini tekshiring; NAT / HL7 ID mos kelishi ulanish uchun yetarli.
                 </div>
               )}
 
