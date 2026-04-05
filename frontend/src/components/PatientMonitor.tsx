@@ -141,7 +141,7 @@ export const PatientMonitor = React.memo(function PatientMonitor({ patient, size
                 patient.news2Score >= 5 ? "bg-orange-100 border-orange-200 text-orange-600" :
                 patient.news2Score >= 1 ? "bg-yellow-100 border-yellow-200 text-yellow-700" :
                 "bg-emerald-100 border-emerald-200 text-emerald-600"
-              )} title={hasLiveVitals ? "NEWS2 Bali" : "Jonli vitallar kutilmoqda (OBX)"}>
+              )} title={hasLiveVitals ? "NEWS2 Bali" : "Jonli qabul kutilmoqda"}>
                 N: {hasLiveVitals ? patient.news2Score : "—"}
               </div>
               <button
@@ -188,7 +188,7 @@ export const PatientMonitor = React.memo(function PatientMonitor({ patient, size
 
       {!isSmall && !hasLiveVitals && (
         <p className="text-[9px] text-amber-800 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 mt-1 leading-tight">
-          Jonli vitallar kutilmoqda (HL7 ORU / OBX)
+          Jonli qabul kutilmoqda
         </p>
       )}
 

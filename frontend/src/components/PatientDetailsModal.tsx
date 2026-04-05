@@ -291,11 +291,16 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
               </div>
 
               {!hasLiveVitals && (
-                <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-950">
-                  <strong>Jonli vitallar hali yozilmagan.</strong> Qurilma onlayn bo‘lishi mumkin, lekin
-                  bemor kartasiga raqamlar faqat HL7 xabarida <strong>OBX</strong> (masalan, YUCh, SpO2)
-                  kelganda tushadi. Mindrayda HL7 <strong>ORU / vitallar yuborish</strong> yoqilganini va
-                  monitor tizim vaqtini tekshiring; NAT / HL7 ID mos kelishi ulanish uchun yetarli.
+                <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-sm text-amber-950 space-y-1.5">
+                  <p>
+                    <strong>Hozircha jonli qabul yo‘q.</strong> Monitor orqali ma’lumot kelishi bilan shu yerda
+                    avtomatik yangilanadi.
+                  </p>
+                  <p className="text-xs text-amber-900/85 leading-relaxed">
+                    Prezentatsiya / sinov: serverda <code className="bg-amber-100/80 px-1 rounded">DEMO_LIVE_VITALS=1</code>{" "}
+                    (va xizmatni qayta ishga tushirish). Haqiqiy ish: Mindrayda HL7 vitallar yuborish va tizim vaqti.
+                    Batafsil — <strong>Tizim sozlamalari → Integratsiya</strong>.
+                  </p>
                 </div>
               )}
 

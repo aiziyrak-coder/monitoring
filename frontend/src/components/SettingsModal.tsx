@@ -708,6 +708,16 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                         Qurilma tizimga qo'shilgandan so'ng, uni ma'lum bir "Joy"ga (Bed) biriktirasiz. 
                         Bemor shu joyga yotqizilganda, tizim avtomatik ravishda qurilmadan kelayotgan ma'lumotlarni bemor profiliga bog'laydi.
                       </p>
+
+                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-950">
+                        <h4 className="font-bold text-amber-900 mb-1">Prezentatsiya rejimi (HL7siz)</h4>
+                        <p className="text-zinc-800 leading-relaxed">
+                          Server faylida <code className="bg-amber-100 px-1 rounded">/etc/clinicmonitoring.env</code> ga{" "}
+                          <code className="bg-amber-100 px-1 rounded">DEMO_LIVE_VITALS=1</code> qo‘shing, keyin{" "}
+                          <code className="bg-amber-100 px-1 rounded">systemctl restart clinicmonitoring-backend</code>.
+                          Bemorlar kartasida namuna vitallar har ~1 s yangilanadi. Haqiqiy klinikada shu qatorni olib tashlang.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}

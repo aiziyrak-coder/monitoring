@@ -154,6 +154,13 @@ LOGGING = {
 # Shu vaqtdan oshsa qurilma API bo‘yicha «oflayn» (vitallar kelmayapti)
 DEVICE_ONLINE_SILENCE_SEC = int(os.environ.get("DEVICE_ONLINE_SILENCE_SEC", "120"))
 
+# Prezentatsiya / sinov: HL7siz namuna vitallar (haqiqiy klinikada o‘chirib qo‘ying)
+DEMO_LIVE_VITALS = os.environ.get("DEMO_LIVE_VITALS", "0").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",

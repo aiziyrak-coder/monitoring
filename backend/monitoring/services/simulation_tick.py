@@ -5,6 +5,7 @@ import random
 import time
 from typing import Any
 
+from django.conf import settings
 from django.db import close_old_connections, transaction
 
 from monitoring.asgi_support import schedule_coro
@@ -20,6 +21,17 @@ from monitoring.services.patient_payload import patient_to_wire_dict
 from monitoring.services.vitals_alarm import apply_limit_alarms, apply_scheduled_check_window
 
 _tick_counter = 0
+
+
+def _seed_demo_patient(p: Patient, now_ms: int) -> None:
+    p.hr = random.randint(72, 96)
+    p.spo2 = random.randint(94, 99)
+    p.nibp_sys = random.randint(108, 138)
+    p.nibp_dia = random.randint(68, 90)
+    p.rr = random.randint(14, 22)
+    p.temp = round(random.uniform(36.4, 37.2), 1)
+    p.nibp_time_ms = now_ms
+    p.last_real_vitals_ms = now_ms
 
 
 def _build_update_payload(wire: dict, *, with_history: bool) -> dict[str, Any]:
@@ -40,6 +52,7 @@ def run_simulation_tick() -> None:
     if not patient_ids:
         return
 
+    demo = getattr(settings, "DEMO_LIVE_VITALS", False)
     beds_with_device = frozenset(
         Device.objects.exclude(bed_id__isnull=True).values_list("bed_id", flat=True)
     )
@@ -49,11 +62,13 @@ def run_simulation_tick() -> None:
     with transaction.atomic():
         for pid in patient_ids:
             p = Patient.objects.select_for_update().get(pk=pid)
-            if p.bed_id and p.bed_id in beds_with_device:
+            if not demo and p.bed_id and p.bed_id in beds_with_device:
                 continue
-            # Qurilmadan haqiqiy vital kelmaguncha simulyatsiya yozmaymiz
             if p.last_real_vitals_ms is None:
-                continue
+                if demo:
+                    _seed_demo_patient(p, now_ms)
+                else:
+                    continue
             limits = p.alarm_limits or DEFAULT_ALARM_LIMITS
             if not p.alarm_limits:
                 p.alarm_limits = {**DEFAULT_ALARM_LIMITS}
