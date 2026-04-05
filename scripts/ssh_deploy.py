@@ -68,8 +68,6 @@ REMOTE_SCRIPT = textwrap.dedent(
       sed -i "s|DJANGO_SECRET_KEY=.*|DJANGO_SECRET_KEY=${SECRET}|" /etc/clinicmonitoring.env
     fi
 
-    rm -f /etc/nginx/sites-enabled/default
-
     bash /opt/clinicmonitoring/deploy/bootstrap-server.sh
 
     bash /opt/clinicmonitoring/deploy/remote-update.sh
@@ -80,9 +78,10 @@ REMOTE_SCRIPT = textwrap.dedent(
       -m admin@ziyrak.org 2>&1 || echo "certbot: DNS yoki limit — keyinroq qo'lda ishga tushiring"
 
     echo "=== STATUS ==="
+    sleep 2
     systemctl is-active clinicmonitoring-backend || true
     systemctl is-active nginx || true
-    curl -sS -o /dev/null -w "api health HTTP %{http_code}\n" http://127.0.0.1:8000/api/health || true
+    curl -sS -o /dev/null -w "loopback api health HTTP %{http_code}\n" http://127.0.0.1:8000/api/health || true
     """
 ).strip()
 

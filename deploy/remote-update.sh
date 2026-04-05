@@ -67,10 +67,11 @@ rm -rf /var/www/clinicmonitoring/*
 cp -r dist/. /var/www/clinicmonitoring/
 chown -R www-data:www-data /var/www/clinicmonitoring
 
-# Nginx: faol monitoring konfigi (dublikat sites-enabled olib tashlanadi)
+# Nginx: birinchi yuklanadigan fayl nomi (boshqa 00-* dan oldin)
 rm -f /etc/nginx/sites-enabled/clinicmonitoring-ziyrak.conf
-install -m 644 "$APP_DIR/deploy/nginx/monitoring-active.conf" /etc/nginx/sites-available/monitoring
-ln -sf /etc/nginx/sites-available/monitoring /etc/nginx/sites-enabled/monitoring
+rm -f /etc/nginx/sites-enabled/monitoring
+install -m 644 "$APP_DIR/deploy/nginx/monitoring-active.conf" /etc/nginx/sites-available/00-clinicmonitoring-django.conf
+ln -sf /etc/nginx/sites-available/00-clinicmonitoring-django.conf /etc/nginx/sites-enabled/00-clinicmonitoring-django.conf
 
 if systemctl is-active --quiet nginx 2>/dev/null; then
   nginx -t
