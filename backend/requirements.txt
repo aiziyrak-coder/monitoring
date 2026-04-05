@@ -8,11 +8,11 @@ django-filter>=24.3
 python-socketio[client]>=5.11
 python-engineio>=4.9
 
-# WSGI server (Windows/Linux; Socket.IO threading bilan mos)
-waitress>=3.0
+# ASGI server (Socket.IO WebSocket; Windows/Linux)
+uvicorn[standard]>=0.32
 
-# Linux production uchun (Windowsda ishlamaydi):
-# gunicorn>=23.0
+# WSGI (faqat config.wsgi_socket — legacy / maxsus test)
+waitress>=3.0
 
 # Production DB (ixtiyoriy; standart SQLite)
 # psycopg[binary]>=3.2

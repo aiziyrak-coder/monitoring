@@ -1,5 +1,5 @@
 [Unit]
-Description=ClinicMonitoring API (Django + Socket.IO / Waitress)
+Description=ClinicMonitoring API (Django + Socket.IO / uvicorn ASGI)
 After=network.target
 
 [Service]

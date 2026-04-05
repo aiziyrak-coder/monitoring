@@ -96,12 +96,14 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 CORS_ALLOW_ALL_ORIGINS = DEBUG
+# Production domenlar defaultda (env bo‘lmasa ham SPA + API kross-domen ishlashi uchun)
+_CORS_DEFAULT = (
+    "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:3000,http://localhost:3000,"
+    "https://clinicmonitoring.ziyrak.org,https://clinicmonitoringapi.ziyrak.org"
+)
 CORS_ALLOWED_ORIGINS = [
     o.strip()
-    for o in os.environ.get(
-        "CORS_ALLOWED_ORIGINS",
-        "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:3000,http://localhost:3000",
-    ).split(",")
+    for o in os.environ.get("CORS_ALLOWED_ORIGINS", _CORS_DEFAULT).split(",")
     if o.strip()
 ]
 if not DEBUG:

@@ -1,5 +1,6 @@
 """
-Django + Socket.IO serverini ishga tushirish (Windows va Linux).
+Django + Socket.IO (ASGI / uvicorn). WebSocket uchun Waitress o‘rniga shu server.
+
 Ishlatish: python run_dev.py
 """
 import os
@@ -12,11 +13,19 @@ os.chdir(BASE_DIR)
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 if __name__ == "__main__":
-    from waitress import serve
-
-    from config.wsgi_socket import application
+    import uvicorn
 
     host = os.environ.get("BIND_HOST", "0.0.0.0")
     port = int(os.environ.get("PORT", "8000"))
-    print(f"ClinicMonitoring backend: http://127.0.0.1:{port} (API /api, Socket.IO /socket.io)")
-    serve(application, host=host, port=port, threads=8)
+    print(
+        f"ClinicMonitoring backend (uvicorn ASGI): http://127.0.0.1:{port} "
+        f"(REST /api, Socket.IO /socket.io, WebSocket)"
+    )
+    uvicorn.run(
+        "config.asgi:application",
+        host=host,
+        port=port,
+        workers=1,
+        proxy_headers=True,
+        forwarded_allow_ips="*",
+    )
