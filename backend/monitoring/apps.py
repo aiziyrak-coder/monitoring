@@ -14,8 +14,9 @@ class MonitoringConfig(AppConfig):
             return
         if "runserver" in sys.argv and os.environ.get("RUN_MAIN") != "true":
             return
-        # HL7 MLLP faqat ASGI (uvicorn run_dev.py) ishga tushganda — config.asgi on_startup.
-        # ready() da ham chaqirilsa, ba'zan ikki marta / port band bo'lganda qayta urinmaslik xatosi bo'lardi.
+        from monitoring.hl7_mllp_listener import start_hl7_listener_if_enabled
+
+        start_hl7_listener_if_enabled()
 
         from django.conf import settings
 

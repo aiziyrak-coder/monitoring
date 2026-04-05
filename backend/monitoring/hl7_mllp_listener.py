@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import socket
+import sys
 import threading
 from typing import TYPE_CHECKING
 
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-_thread_started = False
+_listener_thread: threading.Thread | None = None
 _lock = threading.Lock()
 
 
@@ -136,13 +137,17 @@ def _handle_client(conn: socket.socket, addr: tuple) -> None:
 
 
 def _serve_forever(host: str, port: int) -> None:
-    global _thread_started
     srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     try:
         srv.bind((host, port))
         srv.listen(32)
         log.info("HL7 MLLP tinglash: %s:%s", host, port)
+        print(
+            f"ClinicMonitoring HL7 MLLP tinglash: {host}:{port}",
+            file=sys.stderr,
+            flush=True,
+        )
         while True:
             c, a = srv.accept()
             t = threading.Thread(
@@ -154,8 +159,7 @@ def _serve_forever(host: str, port: int) -> None:
             t.start()
     except OSError as e:
         log.error("HL7 server xato: %s", e)
-        with _lock:
-            _thread_started = False
+        print(f"ClinicMonitoring HL7 xato: {e}", file=sys.stderr, flush=True)
     finally:
         try:
             srv.close()
@@ -164,20 +168,20 @@ def _serve_forever(host: str, port: int) -> None:
 
 
 def start_hl7_listener_if_enabled() -> None:
-    global _thread_started
+    """django.setup() / AppConfig.ready() da chaqiring — uvicorn socket.io on_startup har doim ishlamasligi mumkin."""
+    global _listener_thread
     if not getattr(settings, "HL7_LISTENER_ENABLED", True):
         log.info("HL7 listener o'chirilgan (HL7_LISTENER_ENABLED).")
         return
     host = getattr(settings, "HL7_LISTEN_HOST", "0.0.0.0")
     port = int(getattr(settings, "HL7_LISTEN_PORT", 6006))
     with _lock:
-        if _thread_started:
+        if _listener_thread is not None and _listener_thread.is_alive():
             return
-        _thread_started = True
-    th = threading.Thread(
-        target=_serve_forever,
-        args=(host, port),
-        daemon=True,
-        name="hl7-mllp-listener",
-    )
-    th.start()
+        _listener_thread = threading.Thread(
+            target=_serve_forever,
+            args=(host, port),
+            daemon=True,
+            name="hl7-mllp-listener",
+        )
+        _listener_thread.start()

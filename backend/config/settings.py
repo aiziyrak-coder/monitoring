@@ -118,6 +118,24 @@ HL7_LISTENER_ENABLED = os.environ.get("HL7_LISTENER_ENABLED", "1").lower() in (
 HL7_LISTEN_HOST = os.environ.get("HL7_LISTEN_HOST", "0.0.0.0")
 HL7_LISTEN_PORT = int(os.environ.get("HL7_LISTEN_PORT", "6006"))
 
+# monitoring.* (HL7 MLLP va boshqalar) — aks holda faqat uvicorn qatorlari journalctl da ko‘rinadi
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "loggers": {
+        "monitoring": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
+
 # Shu vaqtdan oshsa qurilma API bo‘yicha «oflayn» (vitallar kelmayapti)
 DEVICE_ONLINE_SILENCE_SEC = int(os.environ.get("DEVICE_ONLINE_SILENCE_SEC", "120"))
 
