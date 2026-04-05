@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, Server, Building2, MonitorSmartphone, Users, Plus, Trash2, Edit2, Info, AlertTriangle, Link2 } from 'lucide-react';
+import { X, Server, Building2, MonitorSmartphone, Users, Plus, Trash2, Edit2, Info, AlertTriangle, Link2, UserPlus } from 'lucide-react';
 import { apiUrl, hl7ServerDisplay } from '../lib/api';
 import { useStore } from '../store';
+import { AdmitPatientModal } from './AdmitPatientModal';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -72,6 +73,7 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   const { patients, dischargePatient } = useStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAdmitPatient, setShowAdmitPatient] = useState(false);
 
   // Dialog states
   const [promptConfig, setPromptConfig] = useState<{isOpen: boolean, title: string, fields: any[], initialValues?: Record<string, string>, onSubmit: (data: any) => void} | null>(null);
@@ -316,6 +318,11 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm p-4">
       
+      {showAdmitPatient && (
+        <AdmitPatientModal
+          onClose={() => setShowAdmitPatient(false)}
+        />
+      )}
       {promptConfig && <CustomPrompt {...promptConfig} onCancel={closeDialogs} />}
       {confirmConfig && <CustomConfirm {...confirmConfig} onCancel={closeDialogs} />}
 
@@ -498,23 +505,49 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                 {/* Patients Tab */}
                 {activeTab === 'patients' && (
                   <div className="space-y-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <h3 className="text-lg font-medium text-zinc-900">Faol Bemorlar</h3>
-                        <p className="text-sm text-zinc-500">Yangi bemor qo'shish uchun asosiy ekrandagi tugmadan foydalaning.</p>
+                        <p className="text-sm text-zinc-500">
+                          Bemor qabul qilish yoki asosiy ekrandagi «Bemor qabul» tugmasi — ikkalasi ham bir xil.
+                        </p>
                       </div>
-                      <button
-                        onClick={() => {
-                          useStore.getState().setAllSchedules(60000);
-                          closeDialogs();
-                        }}
-                        className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors text-sm border border-emerald-200"
-                      >
-                        Barchasiga 1 daqiqalik tekshiruv
-                      </button>
+                      <div className="flex flex-wrap gap-2 justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setShowAdmitPatient(true)}
+                          className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors text-sm font-medium shadow-sm"
+                        >
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Bemor qo&apos;shish
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            useStore.getState().setAllSchedules(60000);
+                            closeDialogs();
+                          }}
+                          className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors text-sm border border-emerald-200"
+                        >
+                          Barchasiga 1 daqiqalik tekshiruv
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
+                      {Object.values(patients).length === 0 && (
+                        <div className="text-center py-12 px-4 bg-zinc-50 border border-dashed border-zinc-200 rounded-xl text-zinc-500 text-sm">
+                          <p className="mb-4">Hozircha faol bemor yo&apos;q.</p>
+                          <button
+                            type="button"
+                            onClick={() => setShowAdmitPatient(true)}
+                            className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 transition-colors text-sm font-medium"
+                          >
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            Bemor qo&apos;shish
+                          </button>
+                        </div>
+                      )}
                       {Object.values(patients).map((patient: any) => (
                         <div key={patient.id} className="flex items-center justify-between p-4 bg-zinc-50 border border-zinc-200 rounded-xl">
                           <div>
