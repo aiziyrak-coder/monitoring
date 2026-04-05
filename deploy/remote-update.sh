@@ -45,6 +45,13 @@ sys.exit(0 if Patient.objects.exists() else 1)
   .venv/bin/python manage.py seed_demo
 fi
 
+# Eski API (boshqa dastur) — port 8000 va nginx yo'nalishi uchun
+systemctl stop clinic-monitoring-api 2>/dev/null || true
+systemctl disable clinic-monitoring-api 2>/dev/null || true
+if command -v docker >/dev/null 2>&1; then
+  docker stop clinic-monitoring-api 2>/dev/null || true
+fi
+
 if [[ -f /etc/systemd/system/clinicmonitoring-backend.service ]]; then
   systemctl daemon-reload
   systemctl enable clinicmonitoring-backend
@@ -67,11 +74,9 @@ rm -rf /var/www/clinicmonitoring/*
 cp -r dist/. /var/www/clinicmonitoring/
 chown -R www-data:www-data /var/www/clinicmonitoring
 
-# Nginx: 0-clinic* — barcha 00-* dan oldin (glob tartibi)
-rm -f /etc/nginx/sites-enabled/clinicmonitoring-ziyrak.conf
-rm -f /etc/nginx/sites-enabled/monitoring
-rm -f /etc/nginx/sites-enabled/00-clinicmonitoring-django.conf
-rm -f /etc/nginx/sites-enabled/000-clinicmonitoring-django.conf
+# Nginx: boshqa dasturlarning shu domenlar uchun vhostlarini olib tashlash
+bash "$APP_DIR/deploy/purge-nginx-clinicmonitoring-conflicts.sh"
+
 install -m 644 "$APP_DIR/deploy/nginx/monitoring-active.conf" /etc/nginx/sites-available/0-clinicmonitoring-django.conf
 ln -sf /etc/nginx/sites-available/0-clinicmonitoring-django.conf /etc/nginx/sites-enabled/0-clinicmonitoring-django.conf
 

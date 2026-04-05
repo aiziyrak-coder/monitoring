@@ -53,5 +53,5 @@ jobs:
             git fetch origin
             git checkout main
             git reset --hard origin/main
-            chmod +x deploy/remote-update.sh || true
+            chmod +x deploy/remote-update.sh deploy/purge-nginx-clinicmonitoring-conflicts.sh || true
             bash deploy/remote-update.sh
