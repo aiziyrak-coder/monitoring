@@ -50,8 +50,6 @@ jobs:
             fi
             cd "$APP"
             git remote set-url origin https://github.com/aiziyrak-coder/Monitoring.git
-            git fetch origin
-            git checkout main
-            git reset --hard origin/main
-            chmod +x deploy/remote-update.sh deploy/purge-nginx-clinicmonitoring-conflicts.sh || true
+            chmod +x deploy/server-pull.sh deploy/remote-update.sh deploy/purge-nginx-clinicmonitoring-conflicts.sh || true
+            bash deploy/server-pull.sh
             bash deploy/remote-update.sh

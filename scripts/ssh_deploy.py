@@ -60,7 +60,7 @@ REMOTE_SCRIPT = textwrap.dedent(
     git checkout main
     git reset --hard origin/main
 
-    chmod +x deploy/bootstrap-server.sh deploy/remote-update.sh deploy/purge-nginx-clinicmonitoring-conflicts.sh 2>/dev/null || true
+    chmod +x deploy/bootstrap-server.sh deploy/remote-update.sh deploy/purge-nginx-clinicmonitoring-conflicts.sh deploy/server-pull.sh 2>/dev/null || true
 
     if [ ! -f /etc/clinicmonitoring.env ]; then
       install -m 600 /opt/clinicmonitoring/deploy/clinicmonitoring.env.example /etc/clinicmonitoring.env
