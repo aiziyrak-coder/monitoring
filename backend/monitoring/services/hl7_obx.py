@@ -28,6 +28,13 @@ _CODE_TO_FIELD: dict[str, str] = {
     "150344": "hr",
     "150345": "spo2",
     "150456": "hr",
+    "150275": "hr",
+    "150200": "spo2",
+    "149530": "spo2",
+    "151562": "nibpSys",
+    "151563": "nibpDia",
+    "151554": "nibpSys",
+    "151555": "nibpDia",
 }
 
 # OID matnida qidirish (uzunroq birinchi — noto‘g‘ri moslash kamayadi)
@@ -113,7 +120,19 @@ def _observation_blob_upper(parts: list[str]) -> str:
     return raw.upper()
 
 
+def _obx3_components(key_raw: str) -> list[str]:
+    """OBX-3 komponentlari (birinchi bo'sh bo'lishi mumkin: ^150022^MDC)."""
+    if not key_raw:
+        return []
+    return [p.strip() for p in key_raw.split("^") if p and p.strip()]
+
+
 def _field_from_observation(key_raw: str, name_u: str) -> str | None:
+    """Avvalo aniq kod (har bir komponent), keyin butun qator bo'yicha qidiruv."""
+    for comp in _obx3_components(key_raw):
+        hit = _CODE_TO_FIELD.get(comp)
+        if hit:
+            return hit
     blob = (key_raw or "").upper()
     if not blob and name_u:
         blob = name_u
@@ -145,12 +164,11 @@ def _nibp_observation(blob_u: str) -> bool:
 
 
 def _obx_value_str(parts: list[str]) -> str:
-    """OBX-5; ba'zi yuboruvchilarda bo'sh bo'lsa 6–7 qatorlarni tekshiramiz."""
-    if len(parts) > 5 and parts[5].strip():
-        return parts[5]
-    if len(parts) > 6 and parts[6].strip():
-        return parts[6]
-    return parts[5] if len(parts) > 5 else ""
+    """OBX-5 asosan; ba'zida qiymat 6–10 indekslarga siljiydi (vendor farqi)."""
+    for idx in range(5, min(len(parts), 12)):
+        if parts[idx].strip():
+            return parts[idx]
+    return ""
 
 
 def _parse_sn_numeric(value_str: str) -> float | None:
@@ -162,8 +180,19 @@ def _parse_sn_numeric(value_str: str) -> float | None:
     return None
 
 
+def _hl7_unescape_value(s: str) -> str:
+    for seq, sp in (
+        ("\\.br\\", " "),
+        ("\\T\\", " "),
+        ("\\.sp\\", " "),
+        ("\\R\\", " "),
+    ):
+        s = s.replace(seq, sp)
+    return s.strip()
+
+
 def _parse_num(value_str: str) -> float | None:
-    s = value_str.strip().split("^")[0].strip()
+    s = _hl7_unescape_value(value_str).split("^")[0].strip()
     if not s or s in (".", "-"):
         return None
     s = re.sub(r"^[<>≤≥]\s*", "", s)
@@ -174,6 +203,36 @@ def _parse_num(value_str: str) -> float | None:
         return float(m.group(0))
     except ValueError:
         return None
+
+
+def _first_numeric_from_obx_value(value_str: str, value_type: str) -> float | None:
+    """
+    OBX-5 ichida ~ takrorlari, CE (72^bpm), yoki bir nechta ^ qatlamlari.
+    """
+    if not value_str or not value_str.strip():
+        return None
+    raw = _hl7_unescape_value(value_str)
+    if value_type == "SN":
+        n = _parse_sn_numeric(raw)
+        if n is not None:
+            return n
+    for rep in raw.split("~"):
+        rep = rep.strip()
+        if not rep:
+            continue
+        for chunk in rep.split("^"):
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            if value_type == "SN":
+                n = _parse_sn_numeric(chunk)
+            else:
+                n = _parse_num(chunk)
+            if n is not None:
+                return n
+    if value_type == "SN":
+        return _parse_sn_numeric(raw)
+    return _parse_num(raw)
 
 
 def _try_split_nibp(value_str: str) -> tuple[int | None, int | None]:
@@ -194,10 +253,11 @@ def obx_to_vitals_dict(hl7_text: str) -> dict[str, Any]:
         while len(parts) < 8:
             parts.append("")
         key_raw = parts[3] or ""
-        code = key_raw.split("^")[0].strip() if key_raw else ""
-        name_u = (key_raw.split("^")[1] if "^" in key_raw else "").upper()
+        comps = _obx3_components(key_raw)
+        code = comps[0] if comps else (key_raw.split("^")[0].strip() if key_raw else "")
+        name_u = (comps[1] if len(comps) > 1 else (key_raw.split("^")[1] if "^" in key_raw else "")).upper()
         value_str = _obx_value_str(parts)
-        value_type = (parts[2] or "").strip().upper()
+        value_type = (parts[2] or "").strip().upper() or "NM"
         blob_u = _observation_blob_upper(parts)
 
         if _nibp_observation(blob_u):
@@ -209,15 +269,16 @@ def obx_to_vitals_dict(hl7_text: str) -> dict[str, Any]:
                     out["nibpDia"] = sys_dia[1]
                 continue
 
-        num: float | None
-        if value_type == "SN":
-            num = _parse_sn_numeric(value_str)
-        else:
-            num = _parse_num(value_str)
+        num = _first_numeric_from_obx_value(value_str, value_type)
         if num is None:
             continue
 
         field = _CODE_TO_FIELD.get(code)
+        if not field and len(comps) > 1:
+            for c in comps[1:]:
+                field = _CODE_TO_FIELD.get(c)
+                if field:
+                    break
         if not field:
             field = _field_from_observation(key_raw, name_u)
         if field == "nibp_combined":
