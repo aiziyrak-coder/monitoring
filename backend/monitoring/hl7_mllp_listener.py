@@ -87,6 +87,91 @@ def _obx_segment_count(msg: str) -> int:
     )
 
 
+def _decode_hl7_bytes(raw: bytes) -> str:
+    try:
+        return raw.decode("utf-8", errors="replace")
+    except Exception:
+        return raw.decode("latin-1", errors="replace")
+
+
+def _strip_bom(data: bytes) -> bytes:
+    if data.startswith(b"\xef\xbb\xbf"):
+        return data[3:]
+    if data.startswith(b"\xff\xfe") or data.startswith(b"\xfe\xff"):
+        return data[2:]
+    return data
+
+
+def _try_consume_unframed_hl7(buf: bytearray, peer: str) -> bool:
+    """
+    Ba'zi monitorlar MLLP boshlang'ich bayti (0x0B) yubormaydi yoki faqat FS+CR bilan tugatadi.
+    True — kamida bitta xabar _process_one_message ga berildi.
+    """
+    did = False
+    while True:
+        data = _strip_bom(bytes(buf))
+        if not data:
+            return did
+        i = data.find(b"MSH|")
+        if i < 0:
+            return did
+        if i > 0:
+            del buf[:i]
+            data = bytes(buf)
+            i = 0
+        j = data.find(b"\x1c\x0d", 4)
+        if j < 0:
+            j = data.find(b"\x1c\r", 4)
+        if j >= 0:
+            raw = data[: j + 2]
+            del buf[: j + 2]
+            _process_one_message(_decode_hl7_bytes(raw), peer)
+            did = True
+            continue
+        k = data.find(b"\rMSH|", 10)
+        if k < 0:
+            k = data.find(b"\nMSH|", 10)
+        if k >= 0:
+            raw = data[:k]
+            del buf[: k + 1]
+            _process_one_message(_decode_hl7_bytes(raw), peer)
+            did = True
+            continue
+        return did
+
+
+def _flush_hl7_buffer_on_close(buf: bytearray, peer: str) -> None:
+    """Ulanish yopilganda MLLP/FS bo'lmagan qoldiqni bitta ORU deb qayta ishlash."""
+    while _try_consume_unframed_hl7(buf, peer):
+        pass
+    if not buf:
+        return
+    data = _strip_bom(bytes(buf))
+    if b"MSH|" not in data:
+        if len(data) > 0:
+            log.debug(
+                "HL7: ulanish yopildi, MSH yo'q (%d bayt) peer=%s",
+                len(data),
+                peer,
+            )
+        buf.clear()
+        return
+    text = _decode_hl7_bytes(data).strip()
+    if "MSH|" not in text:
+        buf.clear()
+        return
+    log.info(
+        "HL7: ulanish yopilganda to'liq xabar (FS/MLLP bo'lmasligi mumkin), %d bayt peer=%s",
+        len(data),
+        peer,
+    )
+    try:
+        _process_one_message(text, peer)
+    except Exception:
+        log.exception("HL7: yopilishdagi buferni qayta ishlash xato peer=%s", peer)
+    buf.clear()
+
+
 def _process_one_message(msg: str, peer: str) -> None:
     dev = _resolve_device(msg, peer)
     obx_n = _obx_segment_count(msg)
@@ -195,11 +280,18 @@ def _handle_client(conn: socket.socket, addr: tuple) -> None:
                     _process_one_message(text, peer)
                 except Exception:
                     log.exception("HL7 qayta ishlash xato peer=%s", peer)
+            while _try_consume_unframed_hl7(buf, peer):
+                pass
     except TimeoutError:
         log.debug("HL7 client timeout peer=%s", peer)
     except OSError:
         pass
     finally:
+        try:
+            if buf:
+                _flush_hl7_buffer_on_close(buf, peer)
+        except Exception:
+            log.exception("HL7: finally bufer flush peer=%s", peer)
         try:
             conn.close()
         except OSError:

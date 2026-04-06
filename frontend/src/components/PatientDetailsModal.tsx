@@ -432,6 +432,15 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
                         <p>
                           Bemorga yozilgan: <strong>{healthIngest.vitalUpdatesWrittenToPatientDb ?? 0}</strong>
                         </p>
+                        {(healthIngest.hl7MessagesWithResolvedDevice ?? 0) === 0 &&
+                        patient.linkedDeviceLastSeenMs != null &&
+                        patient.linkedDeviceLastSeenMs > 0 ? (
+                          <p className="text-sky-950/90 pt-1 leading-relaxed">
+                            Yuqoridagi «HL7 xabar» 0 bo‘lsa, lekin signal yangi bo‘lsa — ko‘pincha TCP ochilgan,
+                            lekin xabar MLLP (0x0B…0x1C0x0D) ramkasiz kelgan. Server endi bunday oqimni ham
+                            qayta ishlaydi; backendni yangilab, qayta tekshiring.
+                          </p>
+                        ) : null}
                       </div>
                     ) : (
                       <p className="text-sky-700/80 text-[11px]">Hisob yuklanmoqda…</p>
