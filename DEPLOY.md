@@ -1,5 +1,28 @@
 # Deploy: clinicmonitoring.ziyrak.org + clinicmonitoringapi.ziyrak.org
 
+## Har safar: `main` ga push qilgandan keyin serverda (VPS)
+
+**GitHub Actions** Secrets to‘g‘ri bo‘lsa, ko‘pincha deploy **o‘zi** ishlaydi — [Actions](https://github.com/aiziyrak-coder/Monitoring/actions) da oxirgi **CI and deploy** yashil ekanini tekshiring.
+
+Qo‘lda yangilash kerak bo‘lsa, VPS ga kirib:
+
+```bash
+cd /opt/clinicmonitoring
+sudo bash deploy/server-pull-restart.sh
+```
+
+Yoki bir qatorda (SSH bilan):
+
+```bash
+ssh root@167.71.53.238 'cd /opt/clinicmonitoring && sudo bash deploy/server-pull-restart.sh'
+```
+
+Bu skript: `origin/main` bilan tenglashadi, `migrate`, frontend `build`, nginx, **`clinicmonitoring-backend` restart**, health tekshiruvi.
+
+Tekshiruv: `curl -sS https://clinicmonitoringapi.ziyrak.org/api/health`
+
+---
+
 ## 1. DNS
 
 Ikkala domen A yozuvi **167.71.53.238** ga ishora qilsin.
