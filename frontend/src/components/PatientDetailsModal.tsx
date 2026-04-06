@@ -296,7 +296,7 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
                       <span className="font-sans font-semibold text-amber-950">Bu bemorni karavati ID: </span>
                       {patient.bedId}
                       <span className="font-sans text-amber-900/90 block mt-1">
-                        Sozlamalar → Qurilmalar jadvalidagi «Biriktirilgan joy» ID si bilan bir xil bo‘lishi kerak. Farq bo‘lsa, vitallar karta yozilmaydi.
+                        Sozlamalar → Qurilmalar jadvalidagi «Biriktirilgan joy» ID si bilan bir xil bo‘lishi kerak. Farq bo‘lsa, vitallar kartaga yozilmaydi.
                       </span>
                     </p>
                   ) : (
