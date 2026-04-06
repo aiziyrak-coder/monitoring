@@ -708,6 +708,10 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
                           <div className="text-zinc-500 text-xs mt-1">Ro‘yxatdagi lokal IP bilan mos kelishi kerak</div>
                         </div>
                         <div className="text-zinc-500">Content-Type: application/json</div>
+                        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                          Serverda <code className="bg-white/80 px-0.5 rounded">DEVICE_INGEST_TOKEN</code> o‘rnatilgan bo‘lsa, sarlavha:{' '}
+                          <code className="bg-white/80 px-0.5 rounded">X-Device-Ingest-Token: …</code> yoki Bearer.
+                        </p>
                         <div className="text-zinc-700">
                           {`{
   "hr": 75,

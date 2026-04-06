@@ -135,9 +135,22 @@ HL7_LISTENER_ENABLED = os.environ.get("HL7_LISTENER_ENABLED", "1").lower() in (
     "yes",
 )
 HL7_LISTEN_HOST = os.environ.get("HL7_LISTEN_HOST", "0.0.0.0")
-HL7_LISTEN_PORT = int(os.environ.get("HL7_LISTEN_PORT", "6006"))
+try:
+    _hl7_port = int(os.environ.get("HL7_LISTEN_PORT", "6006"))
+except ValueError as e:
+    raise ImproperlyConfigured("HL7_LISTEN_PORT butun son bo‘lishi kerak.") from e
+if not (1 <= _hl7_port <= 65535):
+    raise ImproperlyConfigured("HL7_LISTEN_PORT 1–65535 orasida bo‘lishi kerak.")
+HL7_LISTEN_PORT = _hl7_port
 # HL7 klienti yuborgan yig‘ma bufer (DoS / xotira himoyasi)
-HL7_MAX_BUFFER_BYTES = int(os.environ.get("HL7_MAX_BUFFER_BYTES", str(2 * 1024 * 1024)))
+try:
+    _hl7_buf = int(os.environ.get("HL7_MAX_BUFFER_BYTES", str(2 * 1024 * 1024)))
+except ValueError as e:
+    raise ImproperlyConfigured("HL7_MAX_BUFFER_BYTES butun son bo‘lishi kerak.") from e
+HL7_MAX_BUFFER_BYTES = max(65_536, min(_hl7_buf, 50 * 1024 * 1024))
+
+# REST orqali vital yuborish (faqat POST .../vitals). Bo'sh = tekshiruv yo'q (Mindray mosligi).
+DEVICE_INGEST_TOKEN = (os.environ.get("DEVICE_INGEST_TOKEN") or "").strip()
 
 # monitoring.* (HL7 MLLP va boshqalar) — aks holda faqat uvicorn qatorlari journalctl da ko‘rinadi
 LOGGING = {

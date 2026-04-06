@@ -21,6 +21,12 @@ Bu skript: `origin/main` bilan tenglashadi, `migrate`, frontend `build`, nginx, 
 
 Tekshiruv: `curl -sS https://clinicmonitoringapi.ziyrak.org/api/health`
 
+### Xavfsizlik (qisqa)
+
+- **`DJANGO_DEBUG=false`** va **`DJANGO_SECRET_KEY`** (32+ belgi) productionda majburiy (`/etc/clinicmonitoring.env`, `chmod 600`).
+- **REST** `POST .../vitals` ixtiyoriy **`DEVICE_INGEST_TOKEN`** bilan yopiladi (sarlavha `X-Device-Ingest-Token` yoki `Authorization: Bearer …`); **HL7 :6006** ga ta’sir qilmaydi. Tafsilot: `deploy/clinicmonitoring.env.example`.
+- **CI:** `main` va PR da **backend** (`check`, `test`) + **frontend** (`lint`, `build`) ishlaydi; deploy faqat `main` push / workflow_dispatch.
+
 ---
 
 ## 1. DNS

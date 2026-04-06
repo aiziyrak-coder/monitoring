@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import ipaddress
 import socket
 import time
@@ -5,6 +7,7 @@ import time
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -38,6 +41,25 @@ def _parse_nat_ip(raw) -> str | None:
     except ValueError:
         raise ValueError("NAT tashqi IP noto'g'ri")
     return s
+
+
+def _device_ingest_token_denied(request: Request) -> Response | None:
+    """DEVICE_INGEST_TOKEN o'rnatilgan bo'lsa, REST vital endpointlari himoyalanadi (HL7 tegilmaydi)."""
+    expected = getattr(settings, "DEVICE_INGEST_TOKEN", "") or ""
+    if not str(expected).strip():
+        return None
+    want = str(expected).strip()
+    hdr = (request.headers.get("X-Device-Ingest-Token") or "").strip()
+    if not hdr:
+        auth = request.headers.get("Authorization") or ""
+        if auth.lower().startswith("bearer "):
+            hdr = auth[7:].strip()
+    if hdr != want:
+        return Response(
+            {"detail": "Device vitals: not authenticated (token)."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+    return None
 
 
 def _local_hl7_tcp_open() -> bool:
@@ -236,6 +258,9 @@ class DeviceVitalsIngestView(APIView):
     """Qurilma vitallari — ro'yxatdan o'tgan lokal IP bo'yicha."""
 
     def post(self, request, ip: str):
+        denied = _device_ingest_token_denied(request)
+        if denied is not None:
+            return denied
         dev = Device.objects.filter(ip_address=ip).first()
         if not dev:
             return Response(
@@ -248,5 +273,8 @@ class DeviceVitalsByIdView(APIView):
     """Gateway / agent: HTTPS orqali vitallar — qurilma ID (dev...) bo'yicha."""
 
     def post(self, request, pk: str):
+        denied = _device_ingest_token_denied(request)
+        if denied is not None:
+            return denied
         dev = get_object_or_404(Device, pk=pk)
         return _ingest_vitals_response(dev, request)
