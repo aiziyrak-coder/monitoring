@@ -134,16 +134,6 @@ export const PatientMonitor = React.memo(function PatientMonitor({ patient, size
           
           {!isSmall && (
             <div className="flex space-x-1 items-center mt-0.5">
-              <div className={cn(
-                "flex items-center justify-center rounded px-1.5 py-0.5 border text-[9px] font-bold",
-                !hasLiveVitals ? "bg-zinc-100 border-zinc-200 text-zinc-500" :
-                patient.news2Score >= 7 ? "bg-red-100 border-red-200 text-red-600" :
-                patient.news2Score >= 5 ? "bg-orange-100 border-orange-200 text-orange-600" :
-                patient.news2Score >= 1 ? "bg-yellow-100 border-yellow-200 text-yellow-700" :
-                "bg-emerald-100 border-emerald-200 text-emerald-600"
-              )} title={hasLiveVitals ? "NEWS2 Bali" : "Jonli qabul kutilmoqda"}>
-                N: {hasLiveVitals ? patient.news2Score : "—"}
-              </div>
               <button
                 onClick={(e) => { e.stopPropagation(); togglePinPatient(patient.id); }}
                 className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-zinc-200 rounded text-zinc-600 hover:text-zinc-900"

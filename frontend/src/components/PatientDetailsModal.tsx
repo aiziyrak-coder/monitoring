@@ -257,7 +257,7 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
           {activeTab === 'overview' ? (
             <>
               {/* Info Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200">
                   <div className="flex items-center text-zinc-600 mb-2">
                     <Stethoscope className="w-4 h-4 mr-2" />
@@ -271,19 +271,6 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
                     <span className="text-xs font-semibold uppercase tracking-wider">Shifokor / Hamshira</span>
                   </div>
                   <p className="text-zinc-900 font-medium">{patient.doctor} <br/><span className="text-sm text-zinc-600">{patient.assignedNurse}</span></p>
-                </div>
-                <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200">
-                  <div className="flex items-center text-zinc-600 mb-2">
-                    <Activity className="w-4 h-4 mr-2" />
-                    <span className="text-xs font-semibold uppercase tracking-wider">NEWS2 Bali</span>
-                  </div>
-                  <p className={`text-2xl font-bold ${
-                    !hasLiveVitals ? 'text-zinc-400' :
-                    (patient.news2Score || 0) >= 7 ? 'text-red-600' :
-                    (patient.news2Score || 0) >= 5 ? 'text-orange-500' :
-                    (patient.news2Score || 0) >= 1 ? 'text-yellow-600' :
-                    'text-emerald-600'
-                  }`}>{hasLiveVitals ? patient.news2Score || 0 : '—'}</p>
                 </div>
                 <div className="bg-zinc-50 p-4 rounded-xl border border-zinc-200">
                   <div className="flex items-center text-zinc-500 mb-2">

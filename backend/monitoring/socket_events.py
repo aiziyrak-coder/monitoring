@@ -8,18 +8,18 @@ from django.db import transaction
 from django.utils import timezone
 
 from monitoring.models import Bed, ClinicalNote, Patient
-from monitoring.services.news2 import (
-    DEFAULT_ALARM_LIMITS,
-    calculate_news2,
-    merge_alarm_limits,
-    vitals_from_patient_row,
-)
+from monitoring.services.news2 import DEFAULT_ALARM_LIMITS, merge_alarm_limits
 from monitoring.services.patient_payload import all_patients_wire, patient_to_wire_dict
 
 
 def register_socket_handlers(sio) -> None:
     @sio.event
     async def connect(sid, environ):
+        import asyncio
+
+        from monitoring.asgi_support import set_event_loop
+
+        set_event_loop(asyncio.get_running_loop())
         wire = await sync_to_async(all_patients_wire)()
         await sio.emit("initial_state", wire, room=sid)
 
@@ -161,17 +161,10 @@ def register_socket_handlers(sio) -> None:
                         "intervalMs": 60000,
                         "nextCheckTime": now_ms + 60000,
                     },
-                    news2_score=0,
                     is_pinned=False,
                     bed=bed_obj,
                 )
                 p.save()
-                if p.last_real_vitals_ms is None:
-                    p.news2_score = 0
-                else:
-                    v = vitals_from_patient_row(p)
-                    p.news2_score = calculate_news2(v)
-                p.save(update_fields=["news2_score"])
             return patient_to_wire_dict(p)
 
         payload = await sync_to_async(_run)()

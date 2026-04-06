@@ -118,7 +118,6 @@ class Patient(models.Model):
     alarm_limits = models.JSONField(default=dict)
     scheduled_check = models.JSONField(null=True, blank=True)
     is_pinned = models.BooleanField(default=False)
-    news2_score = models.PositiveSmallIntegerField(default=0)
 
     bed = models.ForeignKey(
         Bed, on_delete=models.SET_NULL, null=True, blank=True, related_name="patients"

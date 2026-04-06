@@ -8,8 +8,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from monitoring.asgi_support import schedule_coro
-from monitoring.io_bus import sio
+from monitoring.asgi_support import schedule_vitals_emit
 from monitoring.models import Bed, Department, Device, Patient, Room
 from monitoring.services.device_ingest import apply_device_vitals_dict
 from monitoring.services.device_stale import mark_stale_devices_offline
@@ -61,7 +60,7 @@ def _ingest_vitals_response(dev: Device, request) -> Response:
     body = request.data if isinstance(request.data, dict) else {}
     payload = apply_device_vitals_dict(dev, body)
     if payload:
-        schedule_coro(sio.emit("vitals_update", [payload]))
+        schedule_vitals_emit([payload])
     return Response({"success": True, "message": "Data received"})
 
 

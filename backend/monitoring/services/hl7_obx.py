@@ -73,6 +73,16 @@ def extract_msh_sending_application(hl7_text: str) -> str | None:
 
 
 def _name_hint(name_upper: str) -> str | None:
+    u = name_upper.strip()
+    # Qisqa OBX-3 (masalan Mindray: HR, SpO2)
+    if u in ("HR", "PR", "PULSE", "PULSERATE"):
+        return "hr"
+    if u in ("SPO2", "SPO₂", "SPO2%", "SPO2 %", "SAO2", "SAO₂"):
+        return "spo2"
+    if u in ("RR", "RESP", "RESPRATE", "RESP_RATE"):
+        return "rr"
+    if u in ("TEMP", "BT", "BODY_TEMP"):
+        return "temp"
     if "HEART" in name_upper and "RATE" in name_upper:
         return "hr"
     if "PULSE" in name_upper or name_upper.startswith("PR"):

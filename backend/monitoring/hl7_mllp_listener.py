@@ -11,8 +11,7 @@ from typing import TYPE_CHECKING
 from django.conf import settings
 from django.db import close_old_connections
 
-from monitoring.asgi_support import schedule_coro
-from monitoring.io_bus import sio
+from monitoring.asgi_support import schedule_vitals_emit
 from monitoring.models import Device
 from monitoring.services.device_ingest import apply_device_vitals_dict
 from monitoring.services.hl7_obx import extract_msh_sending_application, obx_to_vitals_dict
@@ -87,7 +86,7 @@ def _process_one_message(msg: str, peer: str) -> None:
         if vitals:
             payload = apply_device_vitals_dict(dev, vitals)
             if payload:
-                schedule_coro(sio.emit("vitals_update", [payload]))
+                schedule_vitals_emit([payload])
         else:
             # Aksar holatda Mindray OBX kodlari parse qilinmasa ham ulanish «onlayn» bo‘lsin
             apply_device_vitals_dict(dev, {})

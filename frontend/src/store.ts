@@ -77,7 +77,6 @@ export interface PatientData {
     nextCheckTime: number;
   };
   history: VitalHistory[];
-  news2Score: number;
   isPinned: boolean;
   lastRealVitalsMs?: number | null;
   medications: Medication[];
@@ -93,7 +92,6 @@ export interface VitalsUpdatePayload {
   alarmLimits: AlarmLimits;
   scheduledCheck?: PatientData['scheduledCheck'];
   deviceBattery: number;
-  news2Score: number;
   isPinned: boolean;
   lastRealVitalsMs?: number | null;
   medications: Medication[];
@@ -224,7 +222,6 @@ export const useStore = create<AppState>((set, get) => ({
               scheduledCheck: update.scheduledCheck,
               deviceBattery: update.deviceBattery ?? p.deviceBattery,
               history: update.history ?? p.history,
-              news2Score: update.news2Score ?? p.news2Score,
               isPinned: update.isPinned ?? p.isPinned,
               lastRealVitalsMs:
                 update.lastRealVitalsMs !== undefined

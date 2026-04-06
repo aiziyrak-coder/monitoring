@@ -132,7 +132,6 @@ def patient_to_wire_dict(
         "alarm": alarm,
         "alarmLimits": limits,
         "scheduledCheck": p.scheduled_check,
-        "news2Score": p.news2_score,
         "isPinned": p.is_pinned,
         "medications": meds,
         "labs": labs,

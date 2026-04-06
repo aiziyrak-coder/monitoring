@@ -8,11 +8,7 @@ from typing import Any
 from django.db import close_old_connections
 
 from monitoring.models import Device, Patient, VitalHistory
-from monitoring.services.news2 import (
-    DEFAULT_ALARM_LIMITS,
-    calculate_news2,
-    vitals_from_patient_row,
-)
+from monitoring.services.news2 import DEFAULT_ALARM_LIMITS, vitals_from_patient_row
 from monitoring.services.patient_payload import patient_to_wire_dict
 from monitoring.services.vitals_alarm import apply_limit_alarms, apply_scheduled_check_window
 
@@ -58,7 +54,6 @@ def build_vitals_socket_payload(wire: dict) -> dict[str, Any]:
         "alarmLimits": wire["alarmLimits"],
         "scheduledCheck": wire.get("scheduledCheck"),
         "deviceBattery": wire["deviceBattery"],
-        "news2Score": wire["news2Score"],
         "isPinned": wire["isPinned"],
         "medications": wire["medications"],
         "labs": wire["labs"],
@@ -132,7 +127,6 @@ def apply_device_vitals_dict(dev: Device, body: dict) -> dict[str, Any] | None:
         p.alarm_limits = {**DEFAULT_ALARM_LIMITS}
 
     v = vitals_from_patient_row(p)
-    p.news2_score = calculate_news2(v)
     apply_limit_alarms(p, v, limits)
     apply_scheduled_check_window(p, v, now_ms)
     p.save()

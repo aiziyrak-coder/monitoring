@@ -55,5 +55,5 @@ class NoteInline(admin.TabularInline):
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
-    list_display = ("id", "name", "room", "alarm_level", "news2_score")
+    list_display = ("id", "name", "room", "alarm_level")
     inlines = (MedicationInline, LabInline, NoteInline, VitalHistoryInline)
