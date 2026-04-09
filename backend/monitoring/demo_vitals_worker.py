@@ -43,13 +43,15 @@ def _tick_once() -> None:
             continue
         rng = random.Random(hash((pid, tick)))
 
-        p.hr = _clamp_i(p.hr + rng.randint(-2, 2), 62, 90)
-        p.spo2 = _clamp_i(p.spo2 + rng.randint(-1, 1), 96, 99)
-        p.nibp_sys = _clamp_i(p.nibp_sys + rng.randint(-2, 2), 108, 132)
-        p.nibp_dia = _clamp_i(p.nibp_dia + rng.randint(-1, 1), 68, 84)
-        p.rr = _clamp_i(p.rr + rng.randint(-1, 1), 13, 20)
+        p.hr = _clamp_i(int(round(p.hr + rng.gauss(0, 1.05))), 62, 90)
+        p.spo2 = _clamp_i(
+            int(round(p.spo2 + rng.gauss(0, 0.35))), 96, 99
+        )
+        p.nibp_sys = _clamp_i(int(round(p.nibp_sys + rng.gauss(0, 1.2))), 108, 132)
+        p.nibp_dia = _clamp_i(int(round(p.nibp_dia + rng.gauss(0, 0.85))), 68, 84)
+        p.rr = _clamp_i(int(round(p.rr + rng.gauss(0, 0.55))), 13, 20)
         p.temp = round(
-            _clamp_f(p.temp + rng.uniform(-0.08, 0.08), 36.3, 37.0),
+            _clamp_f(p.temp + rng.gauss(0, 0.045), 36.3, 37.0),
             1,
         )
         p.nibp_time_ms = now_ms

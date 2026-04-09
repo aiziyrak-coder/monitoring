@@ -4,7 +4,7 @@ import { apiUrl } from '../lib/api';
 import { openClinicSettings } from '../lib/openSettings';
 import { fetchPatientById, mergePatientsIntoStore } from '../lib/patientSync';
 import { X, Download, Activity, Heart, Battery, UserCircle, Calendar, Stethoscope, UserMinus, Settings2, LineChart as ChartIcon, Save, AlertTriangle } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, Legend } from 'recharts';
 import { format, formatDistanceToNow } from 'date-fns';
 import { uz } from 'date-fns/locale';
 
@@ -182,21 +182,44 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
   const chartData = useMemo(() => {
     if (!patient) return [];
     const v = patient.vitals || { hr: 0, spo2: 0, nibpSys: 0, nibpDia: 0, rr: 0, temp: 0, nibpTime: 0 };
-    const fromHist = (patient.history || []).map(h => ({
+    const sorted = [...(patient.history || [])].sort(
+      (a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0)
+    );
+    const fromHist = sorted.map(h => ({
       time: h.timestamp ? format(new Date(h.timestamp), 'HH:mm:ss') : '',
+      ts: h.timestamp ?? 0,
       hr: Math.round(h.hr),
-      spo2: Math.round(h.spo2)
+      spo2: Math.round(h.spo2),
     }));
     if (fromHist.length > 0) return fromHist;
     if (hasLiveVitals && (v.hr > 0 || v.spo2 > 0)) {
       return [{
         time: format(new Date(), 'HH:mm:ss'),
+        ts: Date.now(),
         hr: Math.round(v.hr),
         spo2: Math.round(v.spo2),
       }];
     }
     return [];
   }, [patient, patient?.history, hasLiveVitals]);
+
+  const hrDomain = useMemo((): [number, number] => {
+    if (chartData.length === 0) return [50, 120];
+    const hrs = chartData.map(d => d.hr);
+    const lo = Math.min(...hrs);
+    const hi = Math.max(...hrs);
+    const pad = Math.max(3, Math.round((hi - lo) * 0.15));
+    return [Math.max(40, lo - pad), Math.min(160, hi + pad)];
+  }, [chartData]);
+
+  const spo2Domain = useMemo((): [number, number] => {
+    if (chartData.length === 0) return [92, 100];
+    const vals = chartData.map(d => d.spo2);
+    const lo = Math.min(...vals);
+    const hi = Math.max(...vals);
+    const pad = Math.max(1, Math.ceil((hi - lo) * 0.2) || 1);
+    return [Math.max(88, lo - pad), Math.min(100, hi + pad)];
+  }, [chartData]);
 
   if (!patient) return null;
 
@@ -481,22 +504,85 @@ function PatientDetailsModalContent({ patientId }: { patientId: string }) {
               <div className="bg-zinc-50 p-5 rounded-xl border border-zinc-200">
                 <h3 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center">
                   <Heart className="w-5 h-5 mr-2 text-emerald-600" />
-                  Tarixiy Trendlar (Oxirgi 5 daqiqa)
+                  Tarixiy Trendlar (oxirgi ~5 daqiqa)
                 </h3>
-                <div className="h-64 w-full">
+                <div className="h-72 w-full">
                   {chartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={chartData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                      <LineChart data={chartData} margin={{ top: 8, right: 28, bottom: 8, left: 4 }}>
+                        <defs>
+                          <linearGradient id="hrAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#059669" stopOpacity={0.2} />
+                            <stop offset="100%" stopColor="#059669" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" vertical={false} />
-                        <XAxis dataKey="time" stroke="#71717a" fontSize={12} tickMargin={10} />
-                        <YAxis yAxisId="left" stroke="#059669" fontSize={12} domain={['auto', 'auto']} />
-                        <YAxis yAxisId="right" orientation="right" stroke="#0891b2" fontSize={12} domain={[80, 100]} />
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e4e4e7', borderRadius: '8px' }}
-                          itemStyle={{ fontWeight: 500 }}
+                        <XAxis dataKey="time" stroke="#71717a" fontSize={11} tickMargin={8} minTickGap={28} />
+                        <YAxis
+                          yAxisId="left"
+                          stroke="#059669"
+                          fontSize={11}
+                          domain={hrDomain}
+                          tickCount={5}
+                          width={44}
                         />
-                        <Line yAxisId="left" type="monotone" dataKey="hr" name="YUCh" stroke="#059669" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
-                        <Line yAxisId="right" type="monotone" dataKey="spo2" name="SpO2" stroke="#0891b2" strokeWidth={2} dot={false} activeDot={{ r: 6 }} />
+                        <YAxis
+                          yAxisId="right"
+                          orientation="right"
+                          stroke="#0891b2"
+                          fontSize={11}
+                          domain={spo2Domain}
+                          tickCount={5}
+                          width={40}
+                        />
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: '#fafafa',
+                            borderColor: '#d4d4d8',
+                            borderRadius: '10px',
+                            boxShadow: '0 10px 40px -12px rgb(0 0 0 / 0.18)',
+                          }}
+                          itemStyle={{ fontWeight: 600 }}
+                          labelStyle={{ color: '#52525b', fontSize: 12 }}
+                        />
+                        <Legend
+                          wrapperStyle={{ paddingTop: 12 }}
+                          formatter={(value) => (
+                            <span className="text-zinc-700 text-xs font-medium">{value}</span>
+                          )}
+                        />
+                        <Area
+                          yAxisId="left"
+                          type="monotone"
+                          dataKey="hr"
+                          name="YUCh (min⁻¹)"
+                          stroke="none"
+                          fill="url(#hrAreaGradient)"
+                          legendType="none"
+                          isAnimationActive={false}
+                        />
+                        <Line
+                          yAxisId="left"
+                          type="monotone"
+                          dataKey="hr"
+                          name="YUCh (min⁻¹)"
+                          stroke="#059669"
+                          strokeWidth={2.25}
+                          dot={false}
+                          activeDot={{ r: 5, strokeWidth: 2, stroke: '#fff' }}
+                          isAnimationActive={false}
+                        />
+                        <Line
+                          yAxisId="right"
+                          type="monotone"
+                          dataKey="spo2"
+                          name="SpO2 (%)"
+                          stroke="#0e7490"
+                          strokeWidth={2.25}
+                          dot={false}
+                          activeDot={{ r: 5, strokeWidth: 2, stroke: '#fff' }}
+                          isAnimationActive={false}
+                        />
                       </LineChart>
                     </ResponsiveContainer>
                   ) : (
