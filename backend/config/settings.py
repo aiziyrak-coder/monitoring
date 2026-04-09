@@ -188,6 +188,18 @@ HL7_NAT_SINGLE_DEVICE_FALLBACK = os.environ.get(
     "HL7_NAT_SINGLE_DEVICE_FALLBACK", "true"
 ).lower() in ("1", "true", "yes")
 
+# TCP ulanish kelganda monitora HL7 QRY^Q01 yuborib vitals so'rash (Creative K12 uchun)
+HL7_SEND_QRY_ON_CONNECT = os.environ.get("HL7_SEND_QRY_ON_CONNECT", "true").lower() in (
+    "1", "true", "yes"
+)
+
+# Agar monitor QRY ga javob bermasa, har N sekundda qayta so'raymiz (ulanish davomida)
+try:
+    _qry_interval = int(os.environ.get("HL7_QRY_INTERVAL_SEC", "30"))
+except ValueError:
+    _qry_interval = 30
+HL7_QRY_INTERVAL_SEC = max(10, min(_qry_interval, 300))
+
 # Taqdimot: 8 ta demo bemorda vitallarni yengil o'zgartirish (seed_demo_patients dan keyin)
 DEMO_VITALS_ENABLED = os.environ.get("DEMO_VITALS_ENABLED", "false").lower() in (
     "1",

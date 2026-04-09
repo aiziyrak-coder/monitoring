@@ -1,11 +1,13 @@
 """HL7 ORU^R01 (MLLP) — port 6006: Mindray, Creative K12 / Comen uslubi, peer IP yoki MSH-3 bo'yicha Device."""
 from __future__ import annotations
 
+import datetime
 import ipaddress
 import logging
 import socket
 import sys
 import threading
+import time
 from typing import TYPE_CHECKING
 
 from django.conf import settings
@@ -89,7 +91,6 @@ def _resolve_device(msg: str, peer: str) -> Device | None:
         return dev
 
     # Fallback: agar faqat bitta qurilma ro'yxatda bo'lsa va sozlamada yoqilgan bo'lsa.
-    # Loopback (127.0.0.1) va tashqi IP uchun ham ishlaydi.
     if getattr(settings, "HL7_NAT_SINGLE_DEVICE_FALLBACK", False):
         all_devs = list(Device.objects.all()[:2])
         if len(all_devs) == 1:
@@ -100,8 +101,6 @@ def _resolve_device(msg: str, peer: str) -> Device | None:
             )
             return all_devs[0]
 
-    # Oxirgi imkoniyat: MSH-3 bo'yicha HL7_SENDING_APPLICATION avtomatik sozlangan qurilma
-    # (agar avval yuborilgan bo'lsa va saqlanmagan bo'lsa)
     if msg:
         app2 = extract_msh_sending_application(msg)
         if app2:
@@ -199,8 +198,8 @@ def _try_consume_unframed_hl7(buf: bytearray, peer: str) -> bool:
 
 def _try_consume_segment_only_oru(buf: bytearray, peer: str) -> bool:
     """
-    FS va MLLP bo‘lmasa, lekin segmentlar \\r yoki \\n bilan tugasa (ochiq TCP oqimi).
-    Comen/K12 ko‘pincha shunday yuboradi; ulanish yopilmasa ham har recv dan keyin tekshiriladi.
+    FS va MLLP bo'lmasa, lekin segmentlar \\r yoki \\n bilan tugasa (ochiq TCP oqimi).
+    Comen/K12 ko'pincha shunday yuboradi; ulanish yopilmasa ham har recv dan keyin tekshiriladi.
     """
     data = _strip_bom(bytes(buf))
     i = data.find(b"MSH|")
@@ -289,7 +288,6 @@ def _process_one_message(msg: str, peer: str) -> None:
             if payload:
                 schedule_vitals_emit([payload])
         else:
-            # Aksar holatda Mindray OBX kodlari parse qilinmasa ham ulanish «onlayn» bo‘lsin
             empty_payload = apply_device_vitals_dict(dev, {})
             if empty_payload:
                 schedule_vitals_emit([empty_payload])
@@ -331,7 +329,7 @@ def _process_one_message(msg: str, peer: str) -> None:
         if "MSH|" in msg.upper() and len(msg.strip()) > 15:
             log.warning(
                 "HL7: qurilma topilmadi peer=%s (NAT IP / lokal IP / HL7 ID ni tekshiring). "
-                "Boshlang‘ich matn: %r",
+                "Boshlang'ich matn: %r",
                 peer,
                 msg.replace("\r", "\\r").replace("\n", "\\n")[:400],
             )
@@ -343,17 +341,39 @@ def _process_one_message(msg: str, peer: str) -> None:
             )
 
 
+def _build_mllp_qry(msg_id: str) -> bytes:
+    """
+    Creative K12 / Comen uchun MLLP-framed HL7 QRY^Q01 xabari.
+    Monitor bu so'rovni olganda joriy vitals bilan ORU^R01 javob berishi kerak.
+    """
+    now = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    msh = f"MSH|^~\\&|ClinSys|Hospital|PatMon|Device|{now}||QRY^Q01|{msg_id}|P|2.3\r"
+    qrd = f"QRD|{now}|R|I|{msg_id}|||ALL|ALL|ALL|ALL\r"
+    raw = (msh + qrd).encode("ascii", errors="replace")
+    return b"\x0b" + raw + b"\x1c\r"
+
+
+def _send_qry(conn: socket.socket, peer: str, msg_id: str) -> bool:
+    """QRY yuborish. Muvaffaqiyatli bo'lsa True qaytaradi."""
+    try:
+        conn.sendall(_build_mllp_qry(msg_id))
+        log.info("HL7: QRY^Q01 yuborildi peer=%s id=%s", peer, msg_id)
+        return True
+    except OSError as e:
+        log.debug("HL7: QRY yuborishda xato peer=%s: %s", peer, e)
+        return False
+
+
 def _handle_client(conn: socket.socket, addr: tuple) -> None:
     peer = _normalize_peer_ip(_peer_ip(addr))
-    # Lokal tekshiruv (curl health check) — faqat bo'sh ulanishni tezda yopamiz
-    # Lekin HL7 xabar yuborilsa (nc yoki test) — qayta ishlaymiz
     _is_loopback = peer in ("127.0.0.1", "::1")
 
     max_buf = int(getattr(settings, "HL7_MAX_BUFFER_BYTES", 2 * 1024 * 1024))
     if not _is_loopback:
         record_hl7_tcp_external_accept(peer)
     log.info("HL7: TCP ulanish %s (port %s)", peer, settings.HL7_LISTEN_PORT)
-    # MLLP xabari kelmasa ham: NAT / lokal IP bo‘yicha qurilmani onlayn qilish
+
+    dev0: "Device | None" = None
     try:
         dev0 = _resolve_device("", peer)
         if dev0 and not _is_loopback:
@@ -361,35 +381,58 @@ def _handle_client(conn: socket.socket, addr: tuple) -> None:
             payload = apply_device_vitals_dict(dev0, {})
             if payload:
                 schedule_vitals_emit([payload])
-            log.info(
-                "HL7: TCP bilan qurilma onlayn (id=%s, peer=%s)",
-                dev0.pk,
-                peer,
-            )
+            log.info("HL7: TCP bilan qurilma onlayn (id=%s, peer=%s)", dev0.pk, peer)
+
+            # Creative K12 uchun: ulanish o'rnatilganda QRY yuborib vitals so'raymiz
+            send_qry = getattr(settings, "HL7_SEND_QRY_ON_CONNECT", True)
+            if send_qry:
+                _send_qry(conn, peer, f"QRY{int(time.time())}")
         else:
             if not _is_loopback:
                 record_hl7_tcp_external_no_device()
             log.warning(
-                "HL7: TCP peer=%s — tizimda mos qurilma yo‘q. "
-                "Qurilmalar: «NAT tashqi IP» aynan shu manzil (yoki HL7 MSH-3) bo‘lishi kerak; "
-                "klinika Internet IP odatda router sozlamasida ko‘rinadi.",
+                "HL7: TCP peer=%s — tizimda mos qurilma yo'q. "
+                "Qurilmalar: «NAT tashqi IP» aynan shu manzil (yoki HL7 MSH-3) bo'lishi kerak; "
+                "klinika Internet IP odatda router sozlamasida ko'rinadi.",
                 peer,
             )
     except Exception:
         log.exception("HL7: TCP dan keyin qurilma yangilash xato peer=%s", peer)
+
     buf = bytearray()
     _first_chunk_logged = False
+    # Periodic QRY: agar ulanish davomida data kelmasa, har N sekundda qayta so'raymiz
+    _qry_interval = int(getattr(settings, "HL7_QRY_INTERVAL_SEC", 30))
+    _last_qry_time = time.time()
+    _got_data = False
+
     try:
-        conn.settimeout(300.0)
+        conn.settimeout(5.0)  # recv timeout — periodic QRY uchun
         while True:
-            chunk = conn.recv(8192)
+            try:
+                chunk = conn.recv(8192)
+            except TimeoutError:
+                # recv timeout — data yo'q, periodic QRY yuboramiz
+                if dev0 and not _is_loopback and not _got_data:
+                    now = time.time()
+                    if now - _last_qry_time >= _qry_interval:
+                        _last_qry_time = now
+                        ok = _send_qry(conn, peer, f"QRY{int(now)}")
+                        if not ok:
+                            break
+                continue
+            except OSError:
+                break
+
             if not chunk:
                 break
-            # Birinchi kelgan ma'lumotni DEBUG ga log qilish (diagnoz uchun)
-            if not _first_chunk_logged and chunk:
+
+            if not _first_chunk_logged:
                 _first_chunk_logged = True
                 preview = chunk[:300].decode("utf-8", errors="replace").replace("\r", "\\r").replace("\n", "\\n")
                 log.info("HL7: birinchi chunk peer=%s len=%d: %r", peer, len(chunk), preview)
+                _got_data = True
+
             if len(buf) + len(chunk) > max_buf:
                 log.warning(
                     "HL7: bufer limiti (%s bayt) oshdi peer=%s — ulanish yopildi",
@@ -418,8 +461,6 @@ def _handle_client(conn: socket.socket, addr: tuple) -> None:
                 pass
             if _try_consume_segment_only_oru(buf, peer):
                 pass
-    except TimeoutError:
-        log.debug("HL7 client timeout peer=%s", peer)
     except OSError:
         pass
     finally:
