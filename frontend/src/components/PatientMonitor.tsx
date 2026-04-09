@@ -1,10 +1,11 @@
-import { Heart, Clock, X, Battery, UserCircle, Droplets, Pin, Wifi, WifiOff } from 'lucide-react';
+import { Heart, Clock, X, Battery, UserCircle, Droplets, Pin, Wifi, WifiOff, PenLine } from 'lucide-react';
 import { PatientData, useStore } from '../store';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import React, { useState, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { uz } from 'date-fns/locale';
+import { VitalsInputModal } from './VitalsInputModal';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -54,6 +55,7 @@ export const PatientMonitor = React.memo(function PatientMonitor({ patient, size
 
   const [showScheduleMenu, setShowScheduleMenu] = useState(false);
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [showVitalsInput, setShowVitalsInput] = useState(false);
 
   const nextCheckTime = scheduledCheck?.nextCheckTime;
 
@@ -225,12 +227,33 @@ export const PatientMonitor = React.memo(function PatientMonitor({ patient, size
               : 'text-zinc-600 bg-zinc-50 border border-zinc-200',
         )}>
           {deviceOnline && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse" />}
-          {linked
-            ? deviceOnline
-              ? 'Qurilma ulangan — HL7 data kutilmoqda'
-              : 'Qurilma oflayn — HL7 ulanishini tekshiring'
-            : 'Qurilma biriktirilmagan'}
+          <span className="flex-1">
+            {linked
+              ? deviceOnline
+                ? 'Qurilma ulangan — HL7 data kutilmoqda'
+                : 'Qurilma oflayn — HL7 ulanishini tekshiring'
+              : 'Qurilma biriktirilmagan'}
+          </span>
+          {/* Qo'lda vitals kiritish tugmasi */}
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowVitalsInput(true); }}
+            className="ml-auto flex items-center gap-0.5 px-1 py-0.5 rounded bg-white/80 border border-zinc-200 text-zinc-600 hover:text-emerald-700 hover:border-emerald-300 hover:bg-emerald-50 transition-colors shrink-0"
+            title="Qo'lda vitals kiritish"
+          >
+            <PenLine className="w-2.5 h-2.5" />
+            <span className="text-[8px] font-medium">Kiritish</span>
+          </button>
         </div>
+      )}
+
+      {/* Vitals Input Modal */}
+      {showVitalsInput && (
+        <VitalsInputModal
+          patientId={patient.id}
+          patientName={patient.name}
+          deviceId={patient.linkedDeviceId ?? null}
+          onClose={() => setShowVitalsInput(false)}
+        />
       )}
 
       {/* Numerics Grid */}

@@ -288,3 +288,66 @@ class DeviceVitalsByIdView(APIView):
             return denied
         dev = get_object_or_404(Device, pk=pk)
         return _ingest_vitals_response(dev, request)
+
+
+class PatientVitalsIngestView(APIView):
+    """
+    Hamshira/shifokor qo'lda vitals kiritish uchun endpoint.
+    Patient ID bo'yicha ishlaydi — device bog'lanmagan bo'lsa ham.
+    POST /api/patients/<pk>/vitals
+    Body: { hr, spo2, nibpSys, nibpDia, rr, temp }
+    """
+
+    def post(self, request, pk: str):
+        import logging
+        import time as _time
+        from monitoring.services.news2 import DEFAULT_ALARM_LIMITS, vitals_from_patient_row
+        from monitoring.services.vitals_alarm import apply_limit_alarms, apply_scheduled_check_window
+        from monitoring.services.device_ingest import _append_vitals_history, build_vitals_socket_payload
+        from monitoring.services.patient_payload import patient_to_wire_dict
+        from monitoring.models import VitalHistory
+
+        log = logging.getLogger(__name__)
+        p = get_object_or_404(Patient, pk=pk)
+        body = request.data if isinstance(request.data, dict) else {}
+
+        now_ms = int(_time.time() * 1000)
+        wrote = False
+
+        for src, dst in (
+            ("hr", "hr"), ("spo2", "spo2"),
+            ("nibpSys", "nibp_sys"), ("nibpDia", "nibp_dia"),
+            ("rr", "rr"), ("temp", "temp"),
+        ):
+            if src in body and body[src] is not None:
+                val = body[src]
+                setattr(p, dst, float(val) if dst == "temp" else int(float(val)))
+                wrote = True
+
+        if ("nibpSys" in body or "nibpDia" in body) and body.get("nibpSys") is not None:
+            p.nibp_time_ms = now_ms
+
+        if not wrote:
+            return Response({"success": False, "message": "Hech qanday qiymat kiritilmadi"}, status=400)
+
+        p.last_real_vitals_ms = now_ms
+        limits = p.alarm_limits or {**DEFAULT_ALARM_LIMITS}
+        if not p.alarm_limits:
+            p.alarm_limits = {**DEFAULT_ALARM_LIMITS}
+
+        v = vitals_from_patient_row(p)
+        apply_limit_alarms(p, v, limits)
+        apply_scheduled_check_window(p, v, now_ms)
+        p.save()
+
+        _append_vitals_history(p, now_ms)
+        hist_rows = list(VitalHistory.objects.filter(patient=p).order_by("timestamp_ms"))
+
+        # Linked device topish
+        dev = Device.objects.filter(bed_id=p.bed_id).first() if p.bed_id else None
+        wire = patient_to_wire_dict(p, history_override=hist_rows, omit_history=False, linked_device=dev)
+        payload = build_vitals_socket_payload(wire)
+        schedule_vitals_emit([payload])
+
+        log.info("PatientVitalsIngest: patient=%s hr=%s spo2=%s (qo'lda kiritildi)", pk, body.get("hr"), body.get("spo2"))
+        return Response({"success": True, "message": "Vitals saqlandi"})
