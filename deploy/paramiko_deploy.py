@@ -9,11 +9,15 @@ nusxalanadi, symlink tozalash o'tkazib yuboriladi.
 Muhit o'zgaruvchilari:
   DEPLOY_HOST, DEPLOY_USER (default root), DEPLOY_SSH_KEY, ixtiyoriy DEPLOY_PORT,
   DEPLOY_APP_PATH, DEPLOY_SSH_KEY_PASSPHRASE, DEPLOY_SKIP_NGINX_PURGE=1
+  DEPLOY_SSH_PASSWORD — kalit o‘rniga parol (repoga yozmang; faqat vaqtinchalik env).
 
 PowerShell:
   pip install -r deploy/requirements-paramiko.txt
   $env:DEPLOY_HOST="167.71.53.238"; $env:DEPLOY_SSH_KEY="$env:USERPROFILE\\.ssh\\id_ed25519"
   python deploy/paramiko_deploy.py
+
+Parol bilan:
+  $env:DEPLOY_SSH_PASSWORD="..."; python deploy/paramiko_deploy.py --host 167.71.53.238 --user root --skip-nginx-purge
 """
 from __future__ import annotations
 
@@ -62,6 +66,11 @@ def main() -> None:
     p.add_argument("--host", default=os.environ.get("DEPLOY_HOST"))
     p.add_argument("--user", default=os.environ.get("DEPLOY_USER", "root"))
     p.add_argument("--key", default=os.environ.get("DEPLOY_SSH_KEY"))
+    p.add_argument(
+        "--password",
+        default=os.environ.get("DEPLOY_SSH_PASSWORD"),
+        help="SSH parol (yoki DEPLOY_SSH_PASSWORD); kalit talab qilinmaydi",
+    )
     p.add_argument("--port", type=int, default=int(os.environ.get("DEPLOY_PORT", "22")))
     p.add_argument("--app", default=os.environ.get("DEPLOY_APP_PATH", "/opt/clinicmonitoring"))
     p.add_argument(
@@ -81,8 +90,16 @@ def main() -> None:
 
     host = _require(args.host, "DEPLOY_HOST / --host")
     user = args.user
-    key_path = _require(args.key, "DEPLOY_SSH_KEY / --key")
+    key_path = (args.key or "").strip()
+    password = (args.password or "").strip()
     app = args.app.rstrip("/")
+
+    if not password and not key_path:
+        print(
+            "Xato: DEPLOY_SSH_KEY / --key yoki DEPLOY_SSH_PASSWORD / --password kerak.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
     purge = "export CLINICMON_SKIP_NGINX_PURGE=1\n" if args.skip_nginx_purge else ""
     remote_script = f"""set -euo pipefail
@@ -112,18 +129,6 @@ fi
         )
         sys.exit(1)
 
-    key_file = os.path.expanduser(key_path)
-    if not os.path.isfile(key_file):
-        print(f"Xato: kalit fayli yo'q: {key_file}", file=sys.stderr)
-        sys.exit(2)
-
-    passphrase = os.environ.get("DEPLOY_SSH_KEY_PASSPHRASE")
-    if passphrase is None:
-        try:
-            passphrase = getpass.getpass("SSH kalit passphrase (bo'sh bo'lishi mumkin): ")
-        except EOFError:
-            passphrase = ""
-
     client = paramiko.SSHClient()
     if args.strict_host_key:
         client.load_system_host_keys()
@@ -135,15 +140,29 @@ fi
         "hostname": host,
         "port": args.port,
         "username": user,
-        "key_filename": key_file,
         "timeout": 45,
         "banner_timeout": 45,
         "auth_timeout": 45,
     }
-    if passphrase:
-        connect_kw["passphrase"] = passphrase
 
-    print(f"Ulanish: {user}@{host}:{args.port} …")
+    if password:
+        connect_kw["password"] = password
+        print(f"Ulanish: {user}@{host}:{args.port} (parol) …")
+    else:
+        key_file = os.path.expanduser(key_path)
+        if not os.path.isfile(key_file):
+            print(f"Xato: kalit fayli yo'q: {key_file}", file=sys.stderr)
+            sys.exit(2)
+        connect_kw["key_filename"] = key_file
+        passphrase = os.environ.get("DEPLOY_SSH_KEY_PASSPHRASE")
+        if passphrase is None:
+            try:
+                passphrase = getpass.getpass("SSH kalit passphrase (bo'sh bo'lishi mumkin): ")
+            except EOFError:
+                passphrase = ""
+        if passphrase:
+            connect_kw["passphrase"] = passphrase
+        print(f"Ulanish: {user}@{host}:{args.port} (kalit) …")
     try:
         client.connect(**connect_kw)
     except Exception as e:
