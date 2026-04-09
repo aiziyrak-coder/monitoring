@@ -88,8 +88,8 @@ def _resolve_device(msg: str, peer: str) -> Device | None:
     if dev:
         return dev
 
-    # Fallback: agar faqat bitta qurilma ro'yxatda bo'lsa va sozlamada yoqilgan bo'lsa
-    # bu ko'pincha NAT orqasidagi bitta monitor uchun ishlatiladi
+    # Fallback: agar faqat bitta qurilma ro'yxatda bo'lsa va sozlamada yoqilgan bo'lsa.
+    # Loopback (127.0.0.1) va tashqi IP uchun ham ishlaydi.
     if getattr(settings, "HL7_NAT_SINGLE_DEVICE_FALLBACK", False):
         all_devs = list(Device.objects.all()[:2])
         if len(all_devs) == 1:
@@ -99,6 +99,17 @@ def _resolve_device(msg: str, peer: str) -> Device | None:
                 all_devs[0].pk,
             )
             return all_devs[0]
+
+    # Oxirgi imkoniyat: MSH-3 bo'yicha HL7_SENDING_APPLICATION avtomatik sozlangan qurilma
+    # (agar avval yuborilgan bo'lsa va saqlanmagan bo'lsa)
+    if msg:
+        app2 = extract_msh_sending_application(msg)
+        if app2:
+            log.debug(
+                "HL7: peer=%s MSH-3=%r — qurilma topilmadi; "
+                "Qurilma sozlamalarida HL7 Sending Application ni %r ga tenglang",
+                peer, app2, app2,
+            )
 
     return None
 

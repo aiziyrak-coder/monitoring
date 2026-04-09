@@ -182,6 +182,12 @@ except ValueError as e:
     raise ImproperlyConfigured("DEVICE_ONLINE_SILENCE_SEC butun son bo‘lishi kerak.") from e
 DEVICE_ONLINE_SILENCE_SEC = max(30, min(_silence, 86_400))
 
+# HL7: bitta qurilma bo'lsa, har qanday IP dan kelgan HL7 xabarni o'sha qurilmaga yo'naltirish.
+# Bu NAT/router orqasidagi bitta monitor uchun foydali.
+HL7_NAT_SINGLE_DEVICE_FALLBACK = os.environ.get(
+    "HL7_NAT_SINGLE_DEVICE_FALLBACK", "true"
+).lower() in ("1", "true", "yes")
+
 # Taqdimot: 8 ta demo bemorda vitallarni yengil o'zgartirish (seed_demo_patients dan keyin)
 DEMO_VITALS_ENABLED = os.environ.get("DEMO_VITALS_ENABLED", "false").lower() in (
     "1",
