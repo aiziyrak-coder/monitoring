@@ -146,6 +146,10 @@ sudo nginx -t && sudo systemctl reload nginx
 
 Keyin `certbot install` **shart emas**, agar `ssl_certificate` qatorlari aynan shu `live/clinicmonitoring.ziyrak.org/` ga ishora qilsa.
 
+**Xato:** `CLINICMON_APP=/yo'lingiz/...` kabi **apostrofli** yo‘l yozmang — `bash`/`sudo` buziladi. Standart: `/opt/clinicmonitoring` yoki `CLINICMON_APP=/opt/boshqa` (faqat lotin, bo‘shliqsiz).
+
+Nginx `conflicting server name "fjsti.ziyrak.org" … ignored` — boshqa loyihalarning takrorlanuvchi `server_name`lari; ClinicMonitoring alohida domenlarda bo‘lsa odatda muammo bo‘lmaydi.
+
 ## 6. GitHubga push
 
 Lokal:
