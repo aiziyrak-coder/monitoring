@@ -249,7 +249,9 @@ def _process_one_message(msg: str, peer: str) -> None:
                 schedule_vitals_emit([payload])
         else:
             # Aksar holatda Mindray OBX kodlari parse qilinmasa ham ulanish «onlayn» bo‘lsin
-            apply_device_vitals_dict(dev, {})
+            empty_payload = apply_device_vitals_dict(dev, {})
+            if empty_payload:
+                schedule_vitals_emit([empty_payload])
             if obx_n:
                 sample = ""
                 for seg in msg.replace("\n", "\r").split("\r"):
@@ -318,7 +320,9 @@ def _handle_client(conn: socket.socket, addr: tuple) -> None:
         dev0 = _resolve_device("", peer)
         if dev0:
             record_hl7_tcp_session_with_device()
-            apply_device_vitals_dict(dev0, {})
+            payload = apply_device_vitals_dict(dev0, {})
+            if payload:
+                schedule_vitals_emit([payload])
             log.info(
                 "HL7: TCP bilan qurilma onlayn (id=%s, peer=%s)",
                 dev0.pk,
