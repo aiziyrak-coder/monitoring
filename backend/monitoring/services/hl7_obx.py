@@ -39,6 +39,8 @@ _CODE_TO_FIELD: dict[str, str] = {
 
 # OID matnida qidirish (uzunroq birinchi — noto‘g‘ri moslash kamayadi)
 _OBS_SUBSTRING_FIELD: tuple[tuple[str, str], ...] = (
+    ("ПУЛЬСОКСИМ", "spo2"),
+    ("ПУЛЬСОКС", "spo2"),
     ("PULS_OXIM_SAT_O2", "spo2"),
     ("MDC_PULS_OXIM_SAT_O2", "spo2"),
     ("SAT_O2", "spo2"),
@@ -130,6 +132,7 @@ def _name_hint(name_upper: str) -> str | None:
         or "OXYGEN" in name_upper
         or "САТУР" in name_upper
         or "НАСЫЩ" in name_upper
+        or "ПУЛЬСОКС" in name_upper
     ):
         return "spo2"
     if "RESP" in name_upper or "ЧДД" in name_upper or "ДЫХАН" in name_upper:

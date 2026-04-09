@@ -1,4 +1,4 @@
-"""Mindray HL7 (MLLP) — port 6006, peer IP yoki MSH-3 bo'yicha Device."""
+"""HL7 ORU^R01 (MLLP) — port 6006: Mindray, Creative K12 / Comen uslubi, peer IP yoki MSH-3 bo'yicha Device."""
 from __future__ import annotations
 
 import ipaddress

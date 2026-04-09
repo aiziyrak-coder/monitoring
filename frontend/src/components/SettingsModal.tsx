@@ -700,6 +700,25 @@ export function SettingsModal({ onClose, initialTab = 'structure' }: SettingsMod
                         </p>
                       </div>
 
+                      <div className="p-4 bg-violet-50 border border-violet-200 rounded-xl text-sm text-zinc-800 space-y-2">
+                        <h4 className="font-bold text-violet-900">Creative Medical K12 (yoki Comen uslubi)</h4>
+                        <p>
+                          «Интернет» menyusida server sizning VPS manzilingiz, port <strong>6006</strong>,{' '}
+                          <strong>HL7 protocol</strong> belgilangan bo‘lsa — tizim shu oqimni qabul qiladi (kodlash: UTF-8 yoki GB18030).
+                        </p>
+                        <p>
+                          <strong>9-karta (real bemor, mock emas):</strong> avval shu bemorni{' '}
+                          <strong>qabul qiling</strong> — karavat monitor biriktirilgan joy bilan <strong>bir xil</strong> bo‘lsin.
+                          Keyin sensorlar ulangan paytda vitallar kartaga tushadi; demo bemolar (demo-p-01…) alohida va ularga faqat{' '}
+                          <code className="bg-white/80 px-1 rounded text-xs">DEMO_VITALS_ENABLED</code> ta’sir qiladi.
+                        </p>
+                        <p className="text-xs text-violet-950/90">
+                          Serverda:{' '}
+                          <code className="bg-white/90 px-1 rounded">python manage.py real_monitor_integration</code> — qisqa
+                          tekshiruv ro‘yxati.
+                        </p>
+                      </div>
+
                       <h4 className="font-bold text-zinc-900 mt-6">REST API (alternativa)</h4>
                       <p className="text-sm text-zinc-600">LANdagi gateway HTTPS orqali yuborsa — IP emas, qurilma ID bilan:</p>
                       

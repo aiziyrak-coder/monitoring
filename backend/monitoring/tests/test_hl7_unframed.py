@@ -100,3 +100,12 @@ class K12StyleObxTests(TestCase):
         )
         d = obx_to_vitals_dict(msg)
         self.assertEqual(d.get("spo2"), 97)
+
+    def test_obx_russian_spo2_hint_in_obx3(self) -> None:
+        """Creative/K12: OBX-3 da rus nom bo‘lishi mumkin."""
+        msg = (
+            "MSH|^~\\&|SEND|REC|202401011200||ORU^R01|1|P|2.3\r"
+            "OBX|1|NM|99^Пульсоксиметрия SpO2^LOCAL||98|||F\r"
+        )
+        d = obx_to_vitals_dict(msg)
+        self.assertEqual(d.get("spo2"), 98)
