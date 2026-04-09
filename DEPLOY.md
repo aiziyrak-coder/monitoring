@@ -17,6 +17,26 @@ Yoki bir qatorda (SSH bilan):
 ssh root@167.71.53.238 'cd /opt/clinicmonitoring && sudo bash deploy/server-pull-restart.sh'
 ```
 
+### Lokal mashinadan Paramiko (Python)
+
+SSH kalit bilan bir buyruqda yuborish; **HTTPS** bu skriptda o‘zgarmaydi (mavjud nginx/cert ishlatiladi). Boshqa saytlarning nginx symlinklarini tegmaslik uchun: `--skip-nginx-purge` yoki `DEPLOY_SKIP_NGINX_PURGE=1`.
+
+```powershell
+pip install -r deploy/requirements-paramiko.txt
+$env:DEPLOY_HOST="167.71.53.238"
+$env:DEPLOY_USER="root"
+$env:DEPLOY_SSH_KEY="$env:USERPROFILE\.ssh\id_ed25519"
+python deploy/paramiko_deploy.py --skip-nginx-purge
+```
+
+```bash
+pip install -r deploy/requirements-paramiko.txt
+export DEPLOY_HOST=167.71.53.238 DEPLOY_SSH_KEY=~/.ssh/id_ed25519
+python deploy/paramiko_deploy.py --skip-nginx-purge
+```
+
+Skript: `deploy/paramiko_deploy.py` — serverda `deploy/server-pull-restart.sh` ni ishga tushiradi.
+
 Bu skript: `origin/main` bilan tenglashadi, `migrate`, frontend `build`, nginx, **`clinicmonitoring-backend` restart**, health tekshiruvi.
 
 Tekshiruv: `curl -sS https://clinicmonitoringapi.ziyrak.org/api/health`

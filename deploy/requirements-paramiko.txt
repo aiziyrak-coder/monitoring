@@ -1,0 +1,2 @@
+# Faqat lokal deploy skripti uchun: pip install -r deploy/requirements-paramiko.txt
+paramiko>=3.4,<4

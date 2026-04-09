@@ -105,8 +105,12 @@ echo "Frontend docroot: $WEBROOT"
 grep 'name="app-id"' "$WEBROOT/index.html" || true
 echo "version.txt:" "$(tr -d '\r\n' < "$WEBROOT/version.txt")"
 
-# Nginx: boshqa dasturlarning shu domenlar uchun vhostlarini olib tashlash
-bash "$APP_DIR/deploy/purge-nginx-clinicmonitoring-conflicts.sh"
+# Nginx: faqat clinicmonitoring domenlari bilan to'qnashuv symlinklari (ixtiyoriy o'chirish)
+if [[ "${CLINICMON_SKIP_NGINX_PURGE:-0}" == "1" ]]; then
+  echo ">>> CLINICMON_SKIP_NGINX_PURGE=1 — purge o'tkazib yuborildi (boshqa vhost symlinklari saqlanadi)"
+else
+  bash "$APP_DIR/deploy/purge-nginx-clinicmonitoring-conflicts.sh"
+fi
 
 install -m 644 "$APP_DIR/deploy/nginx/monitoring-active.conf" /etc/nginx/sites-available/0-clinicmonitoring-django.conf
 ln -sf /etc/nginx/sites-available/0-clinicmonitoring-django.conf /etc/nginx/sites-enabled/0-clinicmonitoring-django.conf
