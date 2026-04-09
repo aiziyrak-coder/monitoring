@@ -715,7 +715,9 @@ export function SettingsModal({ onClose, initialTab = 'structure' }: SettingsMod
                         <p className="text-xs text-violet-950/90">
                           Serverda:{' '}
                           <code className="bg-white/90 px-1 rounded">python manage.py real_monitor_integration</code> — qisqa
-                          tekshiruv ro‘yxati.
+                          tekshiruv ro‘yxati; JOY-5 + K12:{' '}
+                          <code className="bg-white/90 px-1 rounded">link_hl7_monitor_to_bed</code>{' '}
+                          (NAT tashqi IP bilan).
                         </p>
                       </div>
 
