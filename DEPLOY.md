@@ -92,8 +92,30 @@ systemctl restart clinicmonitoring-backend
 
 ## 5. HTTPS
 
+**Muhim:** bitta buyruqda **ikkala** domen — aks holda brauzerda `NET::ERR_CERT_COMMON_NAME_INVALID` (sertifikat boshqa domen uchun bo‘ladi).
+
 ```bash
-certbot --nginx -d clinicmonitoring.ziyrak.org -d clinicmonitoringapi.ziyrak.org
+sudo certbot --nginx -d clinicmonitoring.ziyrak.org -d clinicmonitoringapi.ziyrak.org
+```
+
+Mavjud sertifikatga frontend domenini qo‘shish:
+
+```bash
+sudo certbot --nginx --expand -d clinicmonitoring.ziyrak.org -d clinicmonitoringapi.ziyrak.org
+```
+
+Tekshiruv (SAN ichida `clinicmonitoring.ziyrak.org` bo‘lishi kerak):
+
+```bash
+sudo openssl x509 -in /etc/letsencrypt/live/clinicmonitoring.ziyrak.org/fullchain.pem -noout -text | grep -A1 "Subject Alternative Name"
+```
+
+Agar `live/` papkasi faqat `clinicmonitoringapi.ziyrak.org` nomida bo‘lsa, `deploy/nginx/monitoring-active.conf` dagi `ssl_certificate` / `ssl_certificate_key` yo‘llarini shu papkaga o‘zgartiring yoki yuqoridagi certbotni qayta ishga tushiring.
+
+Repodan yordamchi skript (serverda, repodan keyin):
+
+```bash
+cd /opt/clinicmonitoring && sudo bash deploy/fix-ssl-both-domains.sh
 ```
 
 ## 6. GitHubga push
