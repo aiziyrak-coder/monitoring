@@ -304,21 +304,18 @@ def _process_one_message(msg: str, peer: str) -> None:
 
 def _handle_client(conn: socket.socket, addr: tuple) -> None:
     peer = _normalize_peer_ip(_peer_ip(addr))
-    # /api/health mahalliy tekshiruv — HL7 siklini ishga tushirmaslik
-    if peer in ("127.0.0.1", "::1"):
-        try:
-            conn.close()
-        except OSError:
-            pass
-        return
+    # Lokal tekshiruv (curl health check) — faqat bo'sh ulanishni tezda yopamiz
+    # Lekin HL7 xabar yuborilsa (nc yoki test) — qayta ishlaymiz
+    _is_loopback = peer in ("127.0.0.1", "::1")
 
     max_buf = int(getattr(settings, "HL7_MAX_BUFFER_BYTES", 2 * 1024 * 1024))
-    record_hl7_tcp_external_accept(peer)
+    if not _is_loopback:
+        record_hl7_tcp_external_accept(peer)
     log.info("HL7: TCP ulanish %s (port %s)", peer, settings.HL7_LISTEN_PORT)
     # MLLP xabari kelmasa ham: NAT / lokal IP bo‘yicha qurilmani onlayn qilish
     try:
         dev0 = _resolve_device("", peer)
-        if dev0:
+        if dev0 and not _is_loopback:
             record_hl7_tcp_session_with_device()
             payload = apply_device_vitals_dict(dev0, {})
             if payload:
@@ -329,7 +326,8 @@ def _handle_client(conn: socket.socket, addr: tuple) -> None:
                 peer,
             )
         else:
-            record_hl7_tcp_external_no_device()
+            if not _is_loopback:
+                record_hl7_tcp_external_no_device()
             log.warning(
                 "HL7: TCP peer=%s — tizimda mos qurilma yo‘q. "
                 "Qurilmalar: «NAT tashqi IP» aynan shu manzil (yoki HL7 MSH-3) bo‘lishi kerak; "

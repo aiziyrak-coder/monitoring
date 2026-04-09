@@ -22,8 +22,6 @@ const DEVICE_STALE_MS = 120_000;
 export const PatientMonitor = React.memo(function PatientMonitor({ patient, size = 'large' }: PatientMonitorProps) {
   const { vitals, alarm, alarmLimits, scheduledCheck, deviceBattery, doctor } = patient;
 
-  const hasLiveVitals = patient.lastRealVitalsMs != null && patient.lastRealVitalsMs > 0;
-
   const linked = Boolean(patient.linkedDeviceId);
   const lastSeen = patient.linkedDeviceLastSeenMs;
   const deviceOnline =
@@ -34,11 +32,13 @@ export const PatientMonitor = React.memo(function PatientMonitor({ patient, size
   const deviceProbablyOffline = linked && !deviceOnline;
 
   /**
-   * Jonli vital yo'q, lekin DB da qiymat bor — ko'rsatamiz (bazaviy/placeholder).
-   * Sensorlar ulanmagan bo'lsa ham, DB vitals ko'rsatilsin.
+   * hasLiveVitals: real HL7/REST vital kelgan YOKI qurilma online + DB da vital bor.
+   * Sensorlarsiz TCP ulanib turgan qurilma ham "live" ko'rsatilsin.
    */
+  const hasRealVitalsMs = patient.lastRealVitalsMs != null && patient.lastRealVitalsMs > 0;
   const hasDbVitals = vitals.hr > 0 || vitals.spo2 > 0 || vitals.nibpSys > 0 || vitals.rr > 0;
-  const showDbPlaceholder = !hasLiveVitals && hasDbVitals;
+  const hasLiveVitals = hasRealVitalsMs || (deviceOnline && hasDbVitals);
+  const showDbPlaceholder = !hasRealVitalsMs && hasDbVitals;
   const displayVitals = hasLiveVitals || showDbPlaceholder;
 
   const privacyMode = useStore(state => state.privacyMode);
