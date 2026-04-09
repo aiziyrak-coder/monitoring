@@ -341,6 +341,41 @@ def _process_one_message(msg: str, peer: str) -> None:
             )
 
 
+def _build_mllp_ack(msg_ctrl_id: str, ack_code: str = "AA") -> bytes:
+    """
+    MLLP-framed HL7 ACK xabari.
+    Monitor ORU^R01 yuborganda server shu ACK ni qaytarishi kerak — aks holda
+    ba'zi monitorlar keyingi xabarni yubormaydi.
+    """
+    now = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    msh = (
+        f"MSH|^~\\&|CENTRAL_MONITOR|DJANGO|DEVICE|REMOTE|{now}||ACK^R01|ACK{now}|P|2.3\r"
+    )
+    msa = f"MSA|{ack_code}|{msg_ctrl_id}\r"
+    raw = (msh + msa).encode("ascii", errors="replace")
+    return b"\x0b" + raw + b"\x1c\r"
+
+
+def _extract_msg_ctrl_id(hl7_text: str) -> str:
+    """MSH-10 (Message Control ID) ni ajratib olish."""
+    for line in hl7_text.replace("\n", "\r").split("\r"):
+        if line.startswith("MSH|"):
+            parts = line.split("|")
+            if len(parts) > 9:
+                return parts[9].strip()
+    return "UNKNOWN"
+
+
+def _send_ack(conn: socket.socket, msg_ctrl_id: str, peer: str) -> None:
+    """Monitor ga MLLP ACK yuborish."""
+    try:
+        ack_bytes = _build_mllp_ack(msg_ctrl_id)
+        conn.sendall(ack_bytes)
+        log.debug("HL7: ACK yuborildi peer=%s ctrl_id=%s", peer, msg_ctrl_id)
+    except OSError as e:
+        log.debug("HL7: ACK yuborishda xato peer=%s: %s", peer, e)
+
+
 def _build_mllp_qry(msg_id: str) -> bytes:
     """
     Creative K12 / Comen uchun MLLP-framed HL7 QRY^Q01 xabari.
@@ -453,6 +488,10 @@ def _handle_client(conn: socket.socket, addr: tuple) -> None:
                 raw = bytes(buf[i0 + 1 : i1])
                 del buf[: i1 + 2]
                 text = _decode_hl7_bytes(raw)
+                # Monitor ORU^R01 yuborganda darhol ACK qaytaramiz
+                # (ba'zi monitorlar ACK olmasa keyingi xabarni yubormaydi)
+                ctrl_id = _extract_msg_ctrl_id(text)
+                _send_ack(conn, ctrl_id, peer)
                 try:
                     _process_one_message(text, peer)
                 except Exception:
