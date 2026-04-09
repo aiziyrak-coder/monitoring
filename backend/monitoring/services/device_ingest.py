@@ -87,10 +87,22 @@ def apply_device_vitals_dict(dev: Device, body: dict) -> dict[str, Any] | None:
     dev.save(update_fields=["status", "last_seen_ms"])
 
     if not body:
-        # Hech vital yo'q — lekin qurilma onlayn, frontendga device status yuboramiz
+        # Hech vital yo'q — lekin qurilma onlayn.
+        # Agar bemor karavatda bo'lsa va vitals bor bo'lsa — last_real_vitals_ms ni yangilaymiz.
+        # Bu frontend uchun vitals "fresh" bo'lsin (10 daqiqa oynasi).
         if dev.bed_id:
             p = Patient.objects.filter(bed_id=dev.bed_id).first()
             if p:
+                has_any_vital = (
+                    (p.hr or 0) > 0
+                    or (p.spo2 or 0) > 0
+                    or (p.nibp_sys or 0) > 0
+                    or (p.rr or 0) > 0
+                )
+                if has_any_vital:
+                    # TCP heartbeat = qurilma ishlayapti = vitals hozirgi holat
+                    p.last_real_vitals_ms = now_ms
+                    p.save(update_fields=["last_real_vitals_ms"])
                 wire = patient_to_wire_dict(p, omit_history=True, linked_device=dev)
                 return build_vitals_socket_payload(wire)
         return None
